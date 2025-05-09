@@ -1,6 +1,6 @@
 # 🧠 **Oat Interactive C++ Engineer Onboarding Manual (v1.0)**
 
-## 📜 Table of Contents
+# 📜 Table of Contents
 
 *   [📰 Foreward](#-foreward)
 *   [🔥 Philosophy](#-philosophy)
@@ -23,13 +23,14 @@
     *   [PSN.4: One Class Per File (Mostly)](#psn4-one-class-per-file-mostly)
     *   [PSN.5: Header Guards](#psn5-header-guards)
 *   [🧼 Coding Style & Hygiene (CSH)](#-coding-style--hygiene)
-    *   [CSH.1: Naming Conventions (Types, Variables)](#csh1-naming-conventions-types-variables)
+    *   [CSH.1: Naming Conventions (Types, Variables, Interfaces, etc)](#csh1-naming-conventions-types-variables)
     *   [CSH.2: No `using namespace`](#csh2-no-using-namespace)
     *   [CSH.3: Minimal Dependencies](#csh3-minimal-dependencies)
 *   [📐 Public API Design (API)](#-public-api-design)
     *   [API.1: Minimal Entry Points](#api1-minimal-entry-points)
     *   [API.2: Construction Contract](#api2-construction-contract)
-    *   [API.3: Error Codes](#api3-error-codes)
+    *   [API.3: Use `struct` for POD](#api3-struct-pod)
+    *   [API.4: Error Codes](#api4-error-codes)
 *   [⚙️ Runtime Behavior & Lifecycle (RT)](#️-runtime-behavior--lifecycle)
     *   [RT.1: Tick-Based Loops](#rt1-tick-based-loops)
     *   [RT.2: Time Representation](#rt2-time-representation)
@@ -74,6 +75,7 @@
 ---
 
 ## 📰 Foreward
+<a name="-foreward"></a>
 
 This document is not a style guide. This is an engineering standard.
 
@@ -99,6 +101,7 @@ You write tight, minimal, debug-friendly, cross-platform code. Or you don’t sh
 ---
 
 ## 🔥 Philosophy
+<a name="-philosophy"></a>
 
 This is not Unreal. This is not Godot. This is **not** a retrofitted game engine from 1999 duct-taped to a modern renderer.
 
@@ -119,8 +122,10 @@ You write systems. You write libraries. You build fast, deterministic code that'
 ---
 
 ## 🔧 Language Rules (L)
+<a name="-language-rules"></a>
 
 ### L.1. **Use C++23. No compromise.**
+<a name="l1-c23-standard"></a>
 
 If your compiler doesn’t support `std::expected`, `consteval`, or `[[nodiscard("...")]]` — upgrade or get lost.
 
@@ -130,6 +135,7 @@ Anything older is a maintenance bomb waiting to detonate.
 ---
 
 ### L.2. **Exceptions are banned from propagating. Period.**
+<a name="l2-exceptions-banned"></a>
 
 **No `throw` that escapes your module. No `try`/`catch` for flow control. No `noexcept(false)` on public API functions.**
 
@@ -165,6 +171,7 @@ Don’t like it? Go back to Java.
 ---
 
 ### L.3. **No public constructors for anything stateful.**
+<a name="l3-factory-functions-for-stateful-objects"></a>
 
 All real systems SHALL use static factory functions:
 
@@ -196,6 +203,7 @@ If you expose a public constructor, it SHALL be for pure POD/struct-only utility
 ---
 
 ### L.4. **Use `std::unique_ptr` or `std::expected` exclusively for ownership and error propagation.**
+<a name="l4-ownership-and-error-propagation"></a>
 
 No raw `new`. No manual `delete`. No shared ownership by default.
 
@@ -208,6 +216,7 @@ If you're writing `T* foo = new T(...)` and returning it or storing it in a raw 
 ---
 
 ### L.5. **RTTI is off. Downcasting is banned.**
+<a name="l5-rtti-off"></a>
 
 No `dynamic_cast`. No `typeid`. No checking runtime types.
 
@@ -216,6 +225,7 @@ If your design needs polymorphism, use abstract interfaces (see A.2) with zero R
 ---
 
 ### L.6. **Header-only libraries are banned unless trivial.**
+<a name="l6-header-only-libraries-restricted"></a>
 
 If you're building real systems, separate your headers and your implementations. "Trivial" means:
 *   A few simple, non-templated helper functions.
@@ -229,8 +239,10 @@ Headers define contracts. Source files implement them. If you're stuffing signif
 ---
 
 ## 🏗️ Architectural Principles (A)
+<a name="-architectural-principles"></a>
 
 ### A.1. **Every system SHALL be split into 3 distinct layers: Interface, Implementation, and Tests.**
+<a name="a1-module-layers--boundaries"></a>
 
 These layers establish strict boundaries crucial for maintainability, testability, and clarity.
 
@@ -254,6 +266,7 @@ These layers establish strict boundaries crucial for maintainability, testabilit
 ---
 
 ### A.2. **Interface Design: Abstract Classes as Contracts, Mockable by Design.**
+<a name="a2-interface-design"></a>
 
 1.  **Use Abstract Classes for Interfaces:**
     If you need polymorphism or to define a contract for a system component, use an abstract class with pure virtual functions.
@@ -302,6 +315,7 @@ These layers establish strict boundaries crucial for maintainability, testabilit
 ---
 
 ### A.3. **Implementation Details: Private and Encapsulated.**
+<a name="a3-implementation-details"></a>
 
 Implementations of interfaces live in the `src/` directory and are not exposed publicly.
 
@@ -331,6 +345,7 @@ Implementations of interfaces live in the `src/` directory and are not exposed p
 ---
 
 ### A.4. **Reasoning-Driven APIs: Clarity Above All.**
+<a name="a4-reasoning-driven-apis"></a>
 
 We don’t design APIs to “feel modern” or to be overly concise at the expense of clarity. We design them to:
 
@@ -345,10 +360,12 @@ If a newcomer to the codebase cannot read a public header file and form a strong
 ---
 
 ## 📁 Project Structure & Naming (PSN)
+<a name="-project-structure--naming"></a>
 
 Consistency in project layout and naming is critical for navigability, maintainability, and ensuring our CMake build system works smoothly across all libraries.
 
 ### PSN.1: **Directory Layout: Standardized for Clarity and CMake.**
+<a name="psn1-directory-layout"></a>
 
 All Oat Interactive libraries and systems SHALL adhere to the following primary directory structure at their root:
 
@@ -383,6 +400,7 @@ All Oat Interactive libraries and systems SHALL adhere to the following primary 
 ---
 
 ### PSN.2: **Namespaces: Mirroring Directory Structure.**
+<a name="psn2-namespaces"></a>
 
 Namespaces provide logical grouping and prevent naming collisions. They SHALL mirror the public include path.
 
@@ -406,6 +424,7 @@ Namespaces provide logical grouping and prevent naming collisions. They SHALL mi
 ---
 
 ### PSN.3: **File Naming Conventions: snake_case for Files, PascalCase for Types.**
+<a name="psn3-file-naming-conventions"></a>
 
 This convention enhances readability and consistency.
 
@@ -426,6 +445,7 @@ This convention enhances readability and consistency.
 ---
 
 ### PSN.4: **One Primary Class/Interface Per File (Generally).**
+<a name="psn4-one-class-per-file-mostly"></a>
 
 *   Each major public interface (e.g., `SessionManager`) or significant public class should generally reside in its own header file (e.g., `session_manager.h`).
 *   Associated helper structs or enums that are tightly coupled and primarily used with that main class/interface can live in the same header.
@@ -435,6 +455,7 @@ This convention enhances readability and consistency.
 ---
 
 ### PSN.5: **Header Guards: `#pragma once` is Mandatory.**
+<a name="psn5-header-guards"></a>
 
 All header files (`.h`, `_impl.h`) SHALL use `#pragma once` as the include guard mechanism.
 
@@ -451,94 +472,147 @@ All header files (`.h`, `_impl.h`) SHALL use `#pragma once` as the include guard
 ---
 
 ## 🧼 Coding Style & Hygiene (CSH)
+<a name="-coding-style--hygiene"></a>
 
 While this document is an engineering standard, not a granular style guide, certain stylistic aspects directly impact readability, maintainability, and adherence to our core principles.
 
-### CSH.1: **Naming Conventions: Types, Variables, Functions.**
+### CSH.1: **Naming Conventions: Types, Variables, Functions, Interfaces.**
+<a name="csh1-naming-conventions-types-variables"></a>
 
-Consistent naming is crucial for code comprehension.
+Consistent naming is not optional. It is mandatory for code clarity and long-term maintainability. If you don’t like it, enjoy working somewhere else.
 
-1.  **Types (Classes, Structs, Enums, Enum Classes, Type Aliases): `PascalCase`**
-    ```cpp
-    class PacketParser;
-    struct ChannelStats;
-    enum class PacketType { Data, Ack, KeepAlive };
-    using UserId = uint64_t;
-    ```
+---
 
-2.  **Local Variables and Non-Member Function Parameters: `snake_case`**
-    ```cpp
-    void process_data(BufferView incoming_payload) {
-        auto last_recv_ns = get_current_time_ns();
-        int32_t packet_count = 0;
-        // ...
-    }
-    ```
+#### 1. **Types (Classes, Structs, Enums, Enum Classes, Type Aliases): `PascalCase`**
 
-3.  **Class Member Variables: `snake_case_` (with trailing underscore)**
-    This helps distinguish member variables from local variables or parameters, especially in constructors or methods.
-    ```cpp
-    class UserSession {
-    public:
-        UserSession(UserId user_id) : user_id_(user_id), creation_time_ns_(get_current_time_ns()) {}
-        UserId get_id() const { return user_id_; }
-    private:
-        UserId user_id_;
-        uint64_t creation_time_ns_;
-        std::string session_token_;
-    };
-    ```
+```cpp
+class PacketParser;
+struct ChannelStats;
+enum class PacketType { Data, Ack, KeepAlive };
+using UserId = uint64_t;
+```
 
-4.  **Class Member Functions (Public, Protected, Private): `camelCase` or `PascalCase`**
-    *   **`camelCase` is preferred for most member functions.**
-    *   `PascalCase` can be acceptable, especially if it aligns with a very strong existing convention within a module, but `camelCase` should be the default.
-    *   Factory functions (static members) like `Create` are `PascalCase`.
+---
 
-    ```cpp
-    class DataProcessor {
-    public:
-        static std::expected<std::unique_ptr<DataProcessor>, Error> Create(Config& cfg);
+#### 2. **Interfaces (Pure Virtual Abstract Types): `I` Prefix Required**
 
-        void submitData(BufferView data);
-        bool isProcessing() const;
-        std::optional<Result> getResult();
+* Pure virtual interfaces SHALL be prefixed with `I`.
+* Example:
 
-    private:
-        void internalProcessQueue();
+  ```cpp
+  class ILogger {
+  public:
+      virtual void log(Level level, std::string_view msg) = 0;
+      virtual ~ILogger() = default;
+  };
 
-        std::vector<Buffer> queue_;
-        bool is_active_;
-    };
-    ```
+  class ConsoleLogger : public ILogger {
+  public:
+      void log(Level level, std::string_view msg) override;
+  };
+  ```
+* If you omit the `I` prefix, you’re wrong. Fix it immediately.
+* See API.2 for more information on interfaces and object construction.
 
-5.  **Free (Non-Member) Functions: `snake_case`**
-    ```cpp
-    namespace oat::utils {
-        uint64_t get_current_time_ns();
-        std::string format_address(const Addr& addr);
-    }
-    ```
+---
 
-6.  **Constants and `constexpr` Variables (Global or Static): `kPascalCase` or `kSnakeCase`**
-    Prefix with `k` to denote compile-time constants.
-    ```cpp
-    namespace oat::net {
-        inline constexpr uint16_t kDefaultPort = 7777;
-        inline constexpr size_t kMaxPacketSize = 1200;
-        inline constexpr std::string_view kProtocolMagic = "OATP";
-    }
-    ```
-    For `enum` (non-class) members, if used (though `enum class` is preferred), `ALL_CAPS_SNAKE_CASE` is traditional, but aim to use `enum class`.
+#### 3. **Local Variables and Function Parameters: `snake_case`**
 
-7.  **Macros: `ALL_CAPS_SNAKE_CASE` (Use Sparingly!)**
-    Macros should be avoided for APIs or complex logic (see Philosophy). If absolutely necessary for conditional compilation or very simple token pasting, they follow this convention.
-    ```cpp
-    #define OAT_ENABLE_DEBUG_LOGGING 1
-    ```
+```cpp
+void process_data(BufferView incoming_payload) {
+    auto last_recv_ns = get_current_time_ns();
+    int32_t packet_count = 0;
+    // ...
+}
+```
+
+---
+
+#### 4. **Class Member Variables: `snake_case_` (Trailing Underscore Required)**
+
+* This disambiguates members from parameters or locals and prevents "this->" nonsense.
+
+```cpp
+class UserSession {
+public:
+    UserSession(UserId user_id) : user_id_(user_id), creation_time_ns_(get_current_time_ns()) {}
+    UserId get_id() const { return user_id_; }
+
+private:
+    UserId user_id_;
+    uint64_t creation_time_ns_;
+    std::string session_token_;
+};
+```
+
+---
+
+#### 5. **Class Member Functions: `camelCase` (Default) or `PascalCase` (Factory/Important Statics)**
+
+* Use `camelCase` for normal methods.
+* Use `PascalCase` for static factory methods or functions that create/return significant API objects.
+
+```cpp
+class DataProcessor {
+public:
+    static std::expected<std::unique_ptr<DataProcessor>, Error> Create(Config& cfg);
+
+    void submitData(BufferView data);
+    bool isProcessing() const;
+    std::optional<Result> getResult();
+
+private:
+    void internalProcessQueue();
+
+    std::vector<Buffer> queue_;
+    bool is_active_;
+};
+```
+
+---
+
+#### 6. **Free (Non-Member) Functions: `snake_case`**
+
+```cpp
+namespace oat::utils {
+    uint64_t get_current_time_ns();
+    std::string format_address(const Addr& addr);
+}
+```
+
+---
+
+#### 7. **Constants and `constexpr` Variables (Global or Static): `kPascalCase` or `kSnakeCase`**
+
+* Prefix constants with `k`.
+* This signals they are immutable and compile-time known.
+
+```cpp
+namespace oat::net {
+    inline constexpr uint16_t kDefaultPort = 7777;
+    inline constexpr size_t kMaxPacketSize = 1200;
+    inline constexpr std::string_view kProtocolMagic = "OATP";
+}
+```
+
+* If you’re still writing macros instead of using `constexpr`, you’re doing it wrong.
+
+---
+
+#### 8. **Macros: `ALL_CAPS_SNAKE_CASE` (Avoid These Like the Plague)**
+
+* Macros are a last resort. If you must define one, follow this style:
+
+```cpp
+#define OAT_ENABLE_DEBUG_LOGGING 1
+```
+
+* If you have more than 3 macros in your code, you’ve likely screwed up your design.
 
 ---
 
 ### CSH.2: **No `using namespace std;` or Broad `using namespace` in Headers.**
+<a name="csh2-no-using-namespace"></a>
 
 You are writing libraries and robust systems, not quick scripts. Unqualified names lead to ambiguity and namespace pollution.
 
@@ -573,6 +647,7 @@ You are writing libraries and robust systems, not quick scripts. Unqualified nam
 ---
 
 ### CSH.3: **Minimal Dependencies: Keep Headers Lean.**
+<a name="csh3-minimal-dependencies"></a>
 
 Strive to minimize the `#include` directives in your header files.
 
@@ -606,10 +681,12 @@ Strive to minimize the `#include` directives in your header files.
 ---
 
 ## 📐 Public API Design (API)
+<a name="-public-api-design"></a>
 
 The public API is the contract your library or system provides to its consumers. It must be clear, robust, and enforce the principles of Oat Interactive engineering.
 
 ### API.1: **Minimal and Focused Entry Points: Avoid Overly Complex Signatures.**
+<a name="api1-minimal-entry-points"></a>
 
 APIs should expose narrow, well-defined entry points. Functions or methods with an excessive number of parameters are a code smell, indicating either a poorly abstracted component or a "kitchen sink" design.
 
@@ -657,52 +734,260 @@ APIs should expose narrow, well-defined entry points. Functions or methods with 
 
 ---
 
-### API.2: **Construction Contract: `std::expected<std::unique_ptr<T>, Error>` for Object Creation.**
+### API.2: **Object Construction: Use Factory Interfaces + `std::expected<std::unique_ptr<T>, Error>`.**
+<a name="api2-construction-contract"></a>
 
-This is the **non-negotiable construction contract** for any stateful object provided by an Oat Interactive library that can fail during creation.
+This is the **non-negotiable construction contract** for any non-POD, stateful, fallible object in an Oat Interactive library.
 
-```cpp
-// Example: public_interface.h
-#include <memory>       // For std::unique_ptr
-#include <expected>     // For std::expected
-#include <oat/lib/error_code.h> // ErrorCode + Error Wrapper.
+You SHALL:
 
-class PublicInterface {
-public:
-    virtual ~PublicInterface() = default;
-    virtual void doSomething() = 0;
-    // ... other pure virtual methods ...
-
-    // The Factory Function - This is the ONLY way to get an instance
-    static std::expected<std::unique_ptr<PublicInterface>, Error> Create(
-        const SomeConfig& config
-        /*, other dependencies like Logger*, Metrics* */
-    );
-
-protected:
-    // Prevent direct construction and slicing if PublicInterface has data (though interfaces shouldn't)
-    // Or make it private if the Impl class is a friend or nested.
-    PublicInterface() = default;
-    PublicInterface(const PublicInterface&) = delete;
-    PublicInterface& operator=(const PublicInterface&) = delete;
-    PublicInterface(PublicInterface&&) = delete;
-    PublicInterface& operator=(PublicInterface&&) = delete;
-};
-```
-
-*   **Ownership:** The caller receives unique ownership via `std::unique_ptr<PublicInterface>`.
-*   **Error Handling:** Creation failure is explicitly handled via `std::expected<..., Error>`. No exceptions propagate from `Create()`.
-*   **Abstraction:** The caller does not know (and does not care) about the concrete implementation type (e.g., `PublicInterfaceImpl`). They only interact with `PublicInterface`.
-*   **No `new` by Caller:** If consumers of your library have to write `new MyLibObject(...)`, your abstraction is broken. The `Create` factory encapsulates object instantiation and any potential setup that might fail.
-
-This pattern enforces:
-*   Clear ownership semantics.
-*   Explicit error handling for fallible construction.
-*   Separation of interface from implementation.
+* Prohibit public constructors on non-POD types.
+* Use static factory methods (`Create`) only on concrete classes, **never** on interfaces.
+* Implement factories via interfaces (`ILoggerFactory`, etc.) that produce `std::expected<std::unique_ptr<T>, Error>`.
+* Ensure factory methods catch all exceptions, including `...`, and wrap them in an `Error`.
 
 ---
 
-### API.3: **Error Handling: Use a Tagged `Error` Wrapper with `ErrorCode`**
+#### ✅ Correct: Interface with Factory Injection
+
+```cpp
+// public_interface.h
+#pragma once
+
+#include <memory>
+#include <expected>
+#include <oat/lib/error.h>
+
+class ILogger {
+public:
+    virtual void log(std::string_view msg) = 0;
+    virtual ~ILogger() = default;
+};
+
+class ILoggerFactory {
+public:
+    virtual std::expected<std::unique_ptr<ILogger>, Error> createLogger() = 0;
+    virtual ~ILoggerFactory() = default;
+};
+```
+
+---
+
+#### ✅ Correct: Concrete Class with Private Constructor and Static `Create()`
+
+```cpp
+// logger_impl.h (not exported publicly)
+#pragma once
+
+#include "public_interface.h"
+#include <fstream>
+
+class ConcreteLogger : public ILogger {
+public:
+    void log(std::string_view msg) override {
+        stream_ << msg << '\n';
+    }
+
+    static std::expected<std::unique_ptr<ILogger>, Error> Create(std::string_view path) {
+        try {
+            auto logger = std::unique_ptr<ConcreteLogger>(new ConcreteLogger(path));
+            return std::expected<std::unique_ptr<ILogger>, Error>{std::move(logger)};
+        } catch (const std::exception& e) {
+            return std::unexpected(Error(ErrorCode::ResourceUnavailable, e));
+        } catch (...) {
+            return std::unexpected(Error(ErrorCode::UnknownError, "Unknown error during ConcreteLogger::Create"));
+        }
+    }
+
+private:
+    std::ofstream stream_;
+
+    explicit ConcreteLogger(std::string_view path) : stream_(std::string(path)) {
+        if (!stream_) {
+            throw std::runtime_error("Failed to open log file");
+        }
+    }
+
+    // Explicitly disable copying
+    ConcreteLogger(const ConcreteLogger&) = delete;
+    ConcreteLogger& operator=(const ConcreteLogger&) = delete;
+};
+```
+
+---
+
+#### ✅ Correct: Factory Implementation That Uses the Private Concrete
+
+```cpp
+// logger_factory_impl.h
+#pragma once
+
+#include "public_interface.h"
+#include "logger_impl.h"
+
+class ConcreteLoggerFactory : public ILoggerFactory {
+public:
+    std::expected<std::unique_ptr<ILogger>, Error> createLogger() override {
+        return ConcreteLogger::Create("log.txt");
+    }
+};
+```
+
+---
+
+#### 🏭 Global Factory Accessor Pattern
+
+If you need to provide a default, globally available factory (e.g., for sockets or loggers), follow this model:
+
+```cpp
+namespace oat::log {
+
+namespace {
+    ILoggerFactory* current_factory = nullptr;
+    ConcreteLoggerFactory default_factory;
+}
+
+ILoggerFactory* get_logger_factory() {
+    if (!current_factory) current_factory = &default_factory;
+    return current_factory;
+}
+
+ILoggerFactory* set_logger_factory(ILoggerFactory* new_factory) {
+    ILoggerFactory* previous = current_factory;
+    current_factory = new_factory;
+    return previous;
+}
+
+void reset_logger_factory() {
+    current_factory = nullptr;
+}
+
+} // namespace oat::log
+```
+
+---
+
+#### 🧪 What About Testing?
+
+* For tests, you SHALL provide your own mock factories directly.
+* Example:
+
+  ```cpp
+  class MockLogger : public ILogger { /* ... */ };
+  class MockLoggerFactory : public ILoggerFactory {
+  public:
+      std::expected<std::unique_ptr<ILogger>, Error> createLogger() override {
+          return std::make_unique<MockLogger>();
+      }
+  };
+  ```
+
+* Don't add `set_x_factory` just so that your tests can inject a mock logger factory. Just use the `MockLoggerFactory` locally.
+
+---
+
+#### 🧱 Requirements Summary
+
+| Rule                                                                     | Enforcement                                          |
+| ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| Non-POD types SHALL NOT have public constructors                         | Use `protected` or `private`                         |
+| Factory interface must return `std::expected<std::unique_ptr<T>, Error>` | No `new` or `make_unique` in user code               |
+| Static `Create()` SHALL only be declared on concrete implementations     | Never put static factories on interfaces             |
+| Static `Create()` MUST catch `std::exception` and `...`                  | Always return `std::unexpected<Error>` on failure    |
+| Friend declarations SHALL NOT be used for factories                      | Avoid coupling, expose via factory interface instead |
+
+---
+
+#### 🚫 Anti-Patterns
+
+##### ❌ Static `Create()` on Interface
+
+```cpp
+class ILogger {
+public:
+    static std::unique_ptr<ILogger> Create(); // ❌ ABSOLUTELY NOT
+};
+```
+
+This is a garbage design because:
+
+* Interfaces have no business knowing their own implementations.
+* You can't mock it.
+* It hardwires the implementation to the consumer.
+* You now have a magic static that can't be replaced or tested.
+
+##### ❌ Public Constructors on Complex Types
+
+```cpp
+class BadThing {
+public:
+    BadThing(int val); // ❌ Not allowed unless it's a trivial POD-style value object
+};
+```
+
+---
+
+#### ✅ What This Enables
+
+* Clean DI with no magic.
+* Clear mocking boundaries.
+* No chance of runtime exception leaks.
+* Flexible ownership transfer via `std::unique_ptr`.
+* Compile-time enforcement of object lifecycle.
+
+---
+
+Alright, here’s the final addition:
+
+---
+
+### API.3: **Explicit POD Declaration: Use `struct` for Trivial Types with Public Constructors.**
+<a name="api3-struct-pod"></a>
+
+If a type is trivial, purely a value container, and has no non-trivial invariants (i.e., it doesn’t throw, doesn’t own resources, and doesn’t require complex state management), you SHALL:
+
+* Declare it as a `struct`, not a `class`.
+* Keep all members public.
+* Avoid constructors unless providing convenience initialization for POD fields only.
+
+This makes the purpose of the type immediately obvious: it’s a dumb bag of data.
+
+#### ✅ Correct Example:
+
+```cpp
+struct Point {
+    int x = 0;
+    int y = 0;
+
+    Point() = default;
+    Point(int x_val, int y_val) : x(x_val), y(y_val) {}
+};
+```
+
+#### ❌ Incorrect Example:
+
+```cpp
+class Point { // ❌ Don’t do this.
+public:
+    Point(int x, int y) : x_(x), y_(y) {}
+private:
+    int x_;
+    int y_;
+};
+```
+
+| Rule                | Enforcement  |
+| ------------------- | ------------ |
+| Trivial POD Types   | Use `struct` |
+| Complex Stateful    | Use `class`  |
+| Public Constructor? | Only if POD  |
+
+This keeps the API surface clean and makes it immediately obvious what’s a value type and what’s a managed resource. No one should ever have to ask, “Can I just copy this, or does it secretly manage heap resources?”
+
+---
+
+### API.4: **Error Handling: Use a Tagged `Error` Wrapper with `ErrorCode`**
+<a name="api4-error-codes"></a>
 
 All public API functions that may fail SHALL return a `std::expected<T, Error>` where `Error` wraps a strongly-typed `enum class ErrorCode`. No function that can fail shall return `bool`, `nullptr`, magic integers, or `std::optional` as an error signal. This is a modern C++ codebase, not a 2002 Arduino project.
 
@@ -839,10 +1124,12 @@ This is not JavaScript. Errors are explicit, typed, and part of your API. They a
 ---
 
 ## ⚙️ Runtime Behavior & Lifecycle (RT)
+<a name="-runtime-behavior--lifecycle"></a>
 
 Oat Interactive systems are designed for real-time, predictable performance. Runtime behavior must be explicit and deterministic.
 
 ### RT.1: **Tick-Based, Deterministic Loops as the Primary Update Mechanism.**
+<a name="rt1-tick-based-loops"></a>
 
 Many Oat Interactive systems, especially those dealing with networking, game logic, or time-sensitive operations, SHALL use a `tick()`-based update model.
 
@@ -876,6 +1163,7 @@ Many Oat Interactive systems, especially those dealing with networking, game log
 ---
 
 ### RT.2: **Time Representation: `uint64_t` Nanoseconds Exclusively in APIs.**
+<a name="rt2-time-representation"></a>
 
 All time values passed into or returned from public API functions (especially for `tick()` methods, timeouts, timestamps) SHALL be represented as `uint64_t` denoting nanoseconds since an arbitrary epoch (usually `std::chrono::steady_clock` epoch).
 
@@ -910,6 +1198,7 @@ All time values passed into or returned from public API functions (especially fo
 ---
 
 ### RT.3: **Allocation in Hot Paths: Avoid or Manage Explicitly.**
+<a name="rt3-allocation-in-hot-paths"></a>
 
 In performance-critical code paths, such as inside a `tick()` method that runs frequently, or in packet processing loops, dynamic memory allocations (`new`, `std::vector::resize` causing reallocation, `std::string` manipulations that reallocate) SHALL be avoided unless absolutely necessary and their cost understood.
 
@@ -924,6 +1213,7 @@ In performance-critical code paths, such as inside a `tick()` method that runs f
 ---
 
 ### RT.4: **Explicit I/O Boundaries: No Hidden Wire Activity.**
+<a name="rt4-explicit-io-boundaries"></a>
 
 Interactions with external I/O (network, disk, etc.) SHALL be explicit and visible at the API level. Avoid designs where a simple method call on an object implicitly triggers I/O operations without the caller's direct intent.
 
@@ -948,10 +1238,12 @@ Interactions with external I/O (network, disk, etc.) SHALL be explicit and visib
 ---
 
 ## 🔒 Memory, Ownership & Interoperability (MOI)
+<a name="-memory-ownership--interoperability"></a>
 
 Correctly managing memory, defining clear ownership, and ensuring robust interoperability (especially at ABI boundaries) are paramount for stable and secure systems.
 
 ### MOI.1: **Never Expose Internal Mutable Buffers Without Surrendering Ownership or Using Safe Views.**
+<a name="moi1-exposing-internal-buffers"></a>
 
 Internal data structures, especially buffers or collections, must be protected from uncontrolled external modification.
 
@@ -999,6 +1291,7 @@ Internal data structures, especially buffers or collections, must be protected f
 ---
 
 ### MOI.2: **Explicit Object Lifetimes: Enforced by Factory and Ownership.**
+<a name="moi2-explicit-object-lifetimes"></a>
 
 The lifetime of objects created by your library must be clear and managed correctly, primarily through the `std::unique_ptr` returned by factory functions.
 
@@ -1016,6 +1309,7 @@ The lifetime of objects created by your library must be clear and managed correc
 ---
 
 ### MOI.3: **STL Types in Exported ABI: Extreme Caution, Prefer Stable Views or Owned Data.**
+<a name="moi3-stl-in-abi"></a>
 
 Exposing Standard Library (STL) types directly in the Application Binary Interface (ABI) of your shared libraries (`.dll`, `.so`, `.dylib`) is fraught with peril due to potential inconsistencies between compiler versions, standard library implementations, and build settings (like `_ITERATOR_DEBUG_LEVEL` on MSVC).
 
@@ -1036,6 +1330,7 @@ Exposing Standard Library (STL) types directly in the Application Binary Interfa
 ---
 
 ### MOI.4: **Never Expose Mutable STL Containers Directly in Public APIs.**
+<a name="moi4-mutable-stl-containers-in-apis"></a>
 
 This is a reiteration of MOI.1 but specifically for STL containers, as they are common culprits.
 
@@ -1067,10 +1362,12 @@ Returning by copy can be expensive for large collections. Alternatives include:
 ---
 
 ## 📦 Dependencies & Linking (DL)
+<a name="-dependencies--linking"></a>
 
 Managing dependencies and ensuring robust linking behavior is crucial for creating maintainable, deployable, and hassle-free systems. Oat Interactive prioritizes minimal, well-defined dependencies and build system integration.
 
 ### DL.1: **No Dynamic Dispatch to Optional 3rd-Party Code Without Explicit Injection.**
+<a name="dl1-no-dynamic-dispatch-to-3rd-party"></a>
 
 If your library or system has an *optional* dependency on a third-party library (e.g., a specific logging library, a metrics backend, a compression algorithm not always needed), this dependency MUST be provided as an interface that the user can implement or inject. Your system should not attempt to `dlopen`/`LoadLibrary` and `dlsym`/`GetProcAddress` third-party symbols directly as its primary integration mechanism for *optional core functionality*.
 
@@ -1126,6 +1423,7 @@ This rule primarily applies to *optional* dependencies that alter behavior or pr
 ---
 
 ### DL.2: **Dependency Acquisition: CMake `FetchContent` Preferred; Header-Only Vendoring as a Last Resort.**
+<a name="dl2-vendoring-policy"></a>
 
 Oat Interactive aims for a streamlined and reproducible build process.
 
@@ -1169,10 +1467,12 @@ Oat Interactive aims for a streamlined and reproducible build process.
 ---
 
 ## 🧱 CMake Is The Law (CM)
+<a name="-cmake-is-the-law"></a>
 
 CMake is the build system for all Oat Interactive C++ projects. No excuses, no alternatives for library or system development. Adherence to these CMake practices is mandatory for interoperability, maintainability, and sanity.
 
 ### CM.1: **You SHALL use CMake ≥ 3.15 (Preferably Latest Stable).**
+<a name="cm1-cmake-version"></a>
 
 If you’re using a CMake version older than 3.15, upgrade. We rely on modern CMake features for robust build logic, dependency management (`FetchContent`), and target-based property management. Aim to use a recent version (e.g., 3.20+ if possible) for access to the latest improvements.
 
@@ -1181,6 +1481,7 @@ If you’re using a CMake version older than 3.15, upgrade. We rely on modern CM
 ---
 
 ### CM.2: **Every Project SHALL be CMake-Fetchable via `FetchContent`.**
+<a name="cm2-fetchcontent-compatibility"></a>
 
 This is the cornerstone of our dependency management strategy. Every Oat Interactive library must be easily consumable by other Oat Interactive projects (and external users) using CMake's `FetchContent`.
 
@@ -1251,6 +1552,7 @@ You don’t need to write complex `FindYourLib.cmake` modules if your library is
 ---
 
 ### CM.3: **Header Layout SHALL Adhere to `include/your_org/your_lib/...`.**
+<a name="cm3-header-layout-for-cmake"></a>
 
 The public headers of your library must reside in a namespaced subdirectory within your `include` directory.
 
@@ -1284,6 +1586,7 @@ The public headers of your library must reside in a namespaced subdirectory with
 ---
 
 ### CM.4: **Headers SHALL Be Included With Full Namespace Path.**
+<a name="cm4-full-namespace-path-includes"></a>
 
 When including headers from *other* Oat Interactive libraries (or well-behaved third-party libraries), always use the full namespaced path.
 
@@ -1308,6 +1611,7 @@ This requires that libraries correctly set up their `target_include_directories`
 ---
 
 ### CM.5: **Install Targets SHALL Be Explicitly Configured for Libraries.**
+<a name="cm5-install-target-configuration"></a>
 
 If your library is intended to be installable (e.g., for system-wide use or packaging, beyond just `FetchContent`), you must configure install rules.
 
@@ -1350,6 +1654,7 @@ install(EXPORT oat_your_lib_ExportSet
 ---
 
 ### CM.6: **All Projects SHALL Write and Install a `*_Config.cmake.in` and `*_ConfigVersion.cmake.in` File.**
+<a name="cm6--_configcmakein-files"></a>
 
 This is essential for robust `find_package(YourLibName CONFIG)` support, allowing downstream projects to easily find and use your installed library.
 
@@ -1433,10 +1738,12 @@ This is essential for robust `find_package(YourLibName CONFIG)` support, allowin
 ---
 
 ## 🧪 Testing, Stability & CI (TSC)
+<a name="-testing-stability--ci"></a>
 
 Software that isn't tested isn't shippable. Software that only works on your machine is broken. At Oat Interactive, testing is not an afterthought; it's integral to the engineering process, ensuring stability, correctness, and reliability across all supported platforms.
 
 ### TSC.1: **Integration Tests are the Default for Systems and Libraries.**
+<a name="tsc1-integration-tests-as-default"></a>
 
 While unit tests have their place for small, isolated utility functions or classes with no external dependencies, the primary focus for Oat Interactive systems and libraries SHALL be on integration tests.
 
@@ -1456,6 +1763,7 @@ While unit tests have their place for small, isolated utility functions or class
 ---
 
 ### TSC.2: **Tests SHALL Run Headless, Offline, and Deterministically.**
+<a name="tsc2-headless-offline-deterministic-tests"></a>
 
 Test environments must be controlled and reproducible.
 
@@ -1468,6 +1776,7 @@ Test environments must be controlled and reproducible.
 ---
 
 ### TSC.3: **All Test Failures SHALL Be Actionable and Diagnosable.**
+<a name="tsc3-actionable-test-failures"></a>
 
 A failing test that provides no useful information is a waste of time.
 
@@ -1488,6 +1797,7 @@ A failing test that provides no useful information is a waste of time.
 ---
 
 ### TSC.4: **You SHALL Test for Failure Modes and Edge Cases.**
+<a name="tsc4-test-failure-modes"></a>
 
 Testing only the "happy path" (where everything works perfectly) is insufficient for real-world software. Robust systems are defined by how well they handle adversity.
 
@@ -1509,6 +1819,7 @@ Your tests MUST cover:
 ---
 
 ### TSC.5: **Continuous Integration (CI) SHALL Build and Run Tests on All Supported Platforms.**
+<a name="tsc5-cross-platform-ci"></a>
 
 Oat Interactive software is cross-platform. "Works on my machine" is not an acceptable standard.
 
@@ -1526,10 +1837,12 @@ Oat Interactive software is cross-platform. "Works on my machine" is not an acce
 ---
 
 ## 📢 Logging & Diagnostics (LOG)
+<a name="-logging--diagnostics"></a>
 
 Effective logging is indispensable for debugging, monitoring, and understanding the runtime behavior of systems, especially distributed and real-time ones. At Oat Interactive, logging is a first-class concern, not an afterthought.
 
 ### LOG.1: **All Logs SHALL Go Through a `Logger` Interface.**
+<a name="log1-logger-interface"></a>
 
 Direct use of `std::cout`, `printf`, `spdlog::log()`, or any other concrete logging mechanism within library or system code is strictly forbidden. All logging activity MUST be routed through a `Logger` interface provided to the component.
 
@@ -1618,6 +1931,7 @@ Direct use of `std::cout`, `printf`, `spdlog::log()`, or any other concrete logg
 ---
 
 ### LOG.2: **Logs SHALL Be Structured and Contextual.**
+<a name="log2-structured--prefixed-logs"></a>
 
 Log messages must be informative and easy to parse, both for humans and machines.
 
@@ -1657,6 +1971,7 @@ Log messages must be informative and easy to parse, both for humans and machines
 ---
 
 ### LOG.3: **No Uncontrolled Logging in Hot Paths: Use Sampling or Throttling.**
+<a name="log3-logging-in-hot-paths"></a>
 
 Excessive logging in performance-critical code sections (e.g., per-packet, per-tick in a high-frequency loop) can severely degrade performance and produce overwhelming, useless log volume.
 
@@ -1700,10 +2015,12 @@ Excessive logging in performance-critical code sections (e.g., per-packet, per-t
 ---
 
 ## 📈 Telemetry / Metrics (MET)
+<a name="-telemetry--metrics"></a>
 
 While logs provide detailed, event-specific information, metrics offer a higher-level, aggregated view of a system's health and performance over time. Oat Interactive systems should expose key operational metrics.
 
 ### MET.1: **Every System SHALL Support `Metrics*` Injection for Key Indicators.**
+<a name="met1-metrics-injection"></a>
 
 Similar to logging, components should not be hard-coded to a specific metrics backend. Instead, they should accept a `Metrics` interface.
 
@@ -1791,6 +2108,7 @@ Similar to logging, components should not be hard-coded to a specific metrics ba
 ---
 
 ### MET.2: **Metric Names SHALL Be Stable, ASCII-Only, snake_case, and Hierarchical.**
+<a name="met2-metric-naming"></a>
 
 Consistency in metric naming is crucial for dashboards, alerting, and long-term analysis. Adhere to conventions often found in systems like Prometheus.
 
@@ -1830,10 +2148,12 @@ Consistency in metric naming is crucial for dashboards, alerting, and long-term 
 ---
 
 ## 🧬 Versioning & Compatibility (VC)
+<a name="-versioning--compatibility"></a>
 
 In a world of distributed systems and evolving software, managing versions and ensuring compatibility (or clear incompatibility) is not optional; it's a fundamental requirement for robust, maintainable software.
 
 ### VC.1: **Use an Explicit Version Constant for Protocols and File Formats.**
+<a name="vc1-version-constant"></a>
 
 Any data format that is serialized to disk, transmitted over a network, or otherwise persisted or exchanged externally SHALL include an explicit version marker.
 
@@ -1876,6 +2196,7 @@ Any data format that is serialized to disk, transmitted over a network, or other
 ---
 
 ### VC.2: **New Features Affecting Wire Format or Behavior SHALL Negotiate Backward/Forward Compatibility via Handshake or Explicit Versioning.**
+<a name="vc2-backward-compatibility-handshake"></a>
 
 When introducing changes that alter the wire format, add new capabilities, or change fundamental behaviors, these changes must be managed gracefully.
 
@@ -1900,6 +2221,7 @@ When introducing changes that alter the wire format, add new capabilities, or ch
 ---
 
 ### VC.3: **No Versioned Namespaces, No Complex SFINAE/Template API Versioning.**
+<a name="vc3-no-api-versioning-via-templatesnamespaces"></a>
 
 API versioning for C++ libraries should be explicit and manageable, not hidden behind layers of template magic or convoluted preprocessor directives.
 
@@ -1932,6 +2254,7 @@ API versioning for C++ libraries should be explicit and manageable, not hidden b
 ---
 
 ## 💀 Dead-On-Arrival Patterns (DOA)
+<a name="-dead-on-arrival-patterns"></a>
 
 These design patterns or practices are considered fundamentally misaligned with Oat Interactive's engineering philosophy. If you find yourself implementing or relying heavily on these, you've likely made a wrong turn. Re-evaluate your design immediately.
 
@@ -1982,6 +2305,7 @@ These design patterns or practices are considered fundamentally misaligned with 
 ---
 
 ## ✋ Stop Right There If...
+<a name="-stop-right-there-if"></a>
 
 This is a quick checklist. If you find yourself doing any of these, pause, take a step back, and reconsider your approach. You might be veering off the Oat Interactive path.
 
@@ -2012,6 +2336,7 @@ This is a quick checklist. If you find yourself doing any of these, pause, take 
 ---
 
 ## 📦 Final Word
+<a name="-final-word"></a>
 
 This is not a style guide. This is survival gear.
 
