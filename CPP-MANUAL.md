@@ -149,6 +149,7 @@ All runtime code SHALL use `std::expected` for error propagation. See API.3 for 
 ```cpp
 // Example of catching an internal exception in a factory
 // static
+[[nodiscard("Handle this result! Failure to do so is a bug.")]]
 std::expected<std::unique_ptr<MyObject>, Error> MyObject::Create(const std::string& config_data) {
     try {
         // MyObjectImpl constructor might throw on bad config_data
@@ -162,6 +163,7 @@ std::expected<std::unique_ptr<MyObject>, Error> MyObject::Create(const std::stri
 }
 
 // Usage
+[[nodiscard("Handle this result! Failure to do so is a bug.")]]
 std::expected<std::unique_ptr<MyObject>, Error> result = MyObject::Create("bad data");
 if (!result) return result.error(); // Propagate Error
 ```
@@ -185,6 +187,7 @@ public:
     virtual ~MyObject() = default;
 
     // Factory function
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     static std::expected<std::unique_ptr<MyObject>, Error> Create(...);
 
 protected:
@@ -279,6 +282,8 @@ These layers establish strict boundaries crucial for maintainability, testabilit
             virtual ~Protocol() = default; // Always provide a virtual destructor for interfaces
 
             virtual void tick(uint64_t now_ns) = 0;
+
+            [[nodiscard("Handle this result! Failure to do so is a bug.")]]
             virtual std::expected<void, Error> sendMessage(BufferView payload) = 0;
             // ... other interface methods
         };
@@ -555,10 +560,15 @@ private:
 ```cpp
 class DataProcessor {
 public:
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     static std::expected<std::unique_ptr<DataProcessor>, Error> Create(Config& cfg);
 
     void submitData(BufferView data);
+    
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     bool isProcessing() const;
+
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     std::optional<Result> getResult();
 
 private:
@@ -766,6 +776,7 @@ public:
 
 class ILoggerFactory {
 public:
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     virtual std::expected<std::unique_ptr<ILogger>, Error> createLogger() = 0;
     virtual ~ILoggerFactory() = default;
 };
@@ -788,6 +799,7 @@ public:
         stream_ << msg << '\n';
     }
 
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     static std::expected<std::unique_ptr<ILogger>, Error> Create(std::string_view path) {
         try {
             auto logger = std::unique_ptr<ConcreteLogger>(new ConcreteLogger(path));
@@ -827,6 +839,7 @@ private:
 
 class ConcreteLoggerFactory : public ILoggerFactory {
 public:
+    [[nodiscard("Handle this result! Failure to do so is a bug.")]]
     std::expected<std::unique_ptr<ILogger>, Error> createLogger() override {
         return ConcreteLogger::Create("log.txt");
     }
@@ -875,7 +888,8 @@ void reset_logger_factory() {
   ```cpp
   class MockLogger : public ILogger { /* ... */ };
   class MockLoggerFactory : public ILoggerFactory {
-  public:
+  public:  
+      [[nodiscard("Handle this result! Failure to do so is a bug.")]]
       std::expected<std::unique_ptr<ILogger>, Error> createLogger() override {
           return std::make_unique<MockLogger>();
       }
