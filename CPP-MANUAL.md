@@ -163,7 +163,6 @@ std::expected<std::unique_ptr<MyObject>, Error> MyObject::Create(const std::stri
 }
 
 // Usage
-[[nodiscard("Handle this result! Failure to do so is a bug.")]]
 std::expected<std::unique_ptr<MyObject>, Error> result = MyObject::Create("bad data");
 if (!result) return result.error(); // Propagate Error
 ```
