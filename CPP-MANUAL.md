@@ -986,16 +986,21 @@ This keeps the API surface clean and makes it immediately obvious what’s a val
 
 ---
 
-### API.4: **Error Handling: Use a Tagged `Error` Wrapper with `ErrorCode`**
+### API.4: **Error Handling: Use Tagged `Error` Wrappers with `ErrorCode` and `[[nodiscard]]`**
+
 <a name="api4-error-codes"></a>
 
-All public API functions that may fail SHALL return a `std::expected<T, Error>` where `Error` wraps a strongly-typed `enum class ErrorCode`. No function that can fail shall return `bool`, `nullptr`, magic integers, or `std::optional` as an error signal. This is a modern C++ codebase, not a 2002 Arduino project.
+All public API functions that may fail SHALL:
+
+* Return a `std::expected<T, Error>` where `Error` wraps a strongly-typed `enum class ErrorCode`.
+* Use `[[nodiscard("Handle this result! Failure to do so is a bug.")]]` on the function signature to enforce compile-time checking.
+* NEVER signal errors via `bool`, `nullptr`, magic integers, or `std::optional`.
+
+This is a modern C++ codebase. If you’re trying to sneak in failure signaling via weak types, you’re writing legacy garbage.
 
 ---
 
 #### 1. Define `ErrorCode` Centrally Per Module
-
-Each module or library SHALL define its own scoped `enum class ErrorCode`. It SHALL NOT leak into unrelated domains.
 
 ```cpp
 // include/oat/foo/error_code.h
@@ -1005,7 +1010,6 @@ namespace oat::foo {
 
 enum class ErrorCode {
     Ok = 0,
-
     // General
     Unknown,
     InvalidArgument,
@@ -1020,7 +1024,6 @@ enum class ErrorCode {
     InvalidChannel,
     ResourceUnavailable,
     InvalidAddress,
-    // Extend as needed
 };
 
 } // namespace oat::foo
@@ -1030,13 +1033,11 @@ enum class ErrorCode {
 
 #### 2. Use a Tagged `Error` Wrapper
 
-All API-visible errors SHALL be wrapped in a concrete `Error` type that includes both the `ErrorCode` and optional diagnostic string.
-
 ```cpp
 #pragma once
 #include <string>
 #include <stdexcept>
-#include "error_code.h" // Your module-specific enum
+#include "error_code.h"
 
 namespace oat::foo {
 
@@ -1052,7 +1053,6 @@ public:
     std::string_view what() const noexcept { return message; }
     ErrorCode code_value() const noexcept { return code; }
 
-    // Critical: must support direct comparison
     bool operator==(ErrorCode other) const noexcept { return code == other; }
     bool operator!=(ErrorCode other) const noexcept { return code != other; }
 };
@@ -1062,44 +1062,47 @@ public:
 
 ---
 
-#### 3. Don't Throw. Return `std::expected`.
-
-All recoverable errors SHALL be returned via `std::expected<T, Error>`. No `throw`. No `try/catch`. No runtime RTTI traps. This isn't Python.
+#### 3. Always Use `[[nodiscard]]` on Functions Returning `std::expected`
 
 ```cpp
+[[nodiscard("Handle this result! Failure to do so is a bug.")]]
 std::expected<Widget, Error> CreateWidget(std::string_view name);
 
+[[nodiscard("Handle this result! Failure to do so is a bug.")]]
 std::expected<void, Error> SendMessage(const Widget& w, std::string_view msg);
 ```
 
-For errorful construction:
+Failing to check these results MUST trigger compiler warnings or errors. If your compiler isn’t respecting it, fix your damn toolchain.
+
+---
+
+#### 4. Void Results Use `std::expected<void, Error>`
 
 ```cpp
+[[nodiscard("You must handle this shutdown result.")]]
+std::expected<void, Error> Shutdown();
+```
+
+---
+
+#### 5. Catch and Wrap Errors Properly
+
+```cpp
+[[nodiscard("Handle this CreateAddr result!")]]
 std::expected<Addr, Error> CreateAddr(const std::string& ip, uint16_t port) {
     try {
         return Addr(ip, port);
     } catch (const std::invalid_argument& e) {
         return std::unexpected(Error(ErrorCode::InvalidAddress, e));
+    } catch (...) {
+        return std::unexpected(Error(ErrorCode::Unknown, "Unknown failure in CreateAddr"));
     }
 }
 ```
 
 ---
 
-#### 4. Void Results Use `std::expected<void, Error>`
-
-If the success path has no data payload, use `expected<void, Error>`. Don't fall back to `bool`. You're not writing firmware.
-
-```cpp
-std::expected<void, Error> Connect();
-std::expected<void, Error> Shutdown();
-```
-
----
-
-#### 5. Never Compare `ErrorCode` with Magic Numbers
-
-Always use the defined `enum class ErrorCode`. Never compare to raw integers. Never log `error code = 3`. Your compiler is there to help. Use it.
+#### 6. Never Compare `ErrorCode` with Magic Numbers
 
 ```cpp
 if (auto res = Shutdown(); !res) {
@@ -1113,13 +1116,23 @@ if (auto res = Shutdown(); !res) {
 
 ---
 
-#### 6. No `std::error_code`. No `std::system_error`.
+#### 7. Ban These Outright
 
-These are fossilized. They drag libc errno mappings into every layer and are tightly bound to exceptions and OS-level faults. We’re building systems, not writing libc adapters. Don’t use them.
+* ❌ `std::error_code`
+* ❌ `std::system_error`
+* ❌ Exceptions in public API paths
+* ❌ Error signaling via `bool`, `nullptr`, or `std::optional`
+
+This is a modern, explicitly-typed, contract-driven system. You will not hide errors. You will handle them. Or the compiler will remind you that you’re incompetent.
 
 ---
 
-This is not JavaScript. Errors are explicit, typed, and part of your API. They are not side effects, control flow, or stream-of-consciousness logging. They are contracts.
+| Rule                                                 | Enforcement                                  |
+| ---------------------------------------------------- | -------------------------------------------- |
+| All `std::expected` returns SHALL be `[[nodiscard]]` | Compiler will warn or error                  |
+| All failures use `std::unexpected<Error>`            | No bare `std::unexpected` without an `Error` |
+| Errors MUST support equality with `ErrorCode`        | Required by `Error` wrapper                  |
+| Ignoring failures is a compile-time defect           | Not just discouraged—prohibited              |
 
 ---
 
