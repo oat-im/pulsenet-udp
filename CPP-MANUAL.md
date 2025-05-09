@@ -1048,29 +1048,97 @@ enum class ErrorCode {
 
 ```cpp
 #pragma once
-#include <string>
-#include <stdexcept>
-#include "error_code.h"
 
 namespace oat::foo {
 
-class Error {
-public:
-    ErrorCode code;
-    std::string message;
+    enum class ErrorCode {
+        InvalidAddress = 1,
+        BindFailed,
+        ConnectFailed,
+        RecvFailed,
+        SendFailed,
+        Timeout,
+        Closed,
+        WouldBlock,
+        InvalidSocket,
+        ConnectionReset,
+        PartialSend,
+        UnsupportedAddressFamily,
+        SocketCreateFailed,
+        SocketConfigFailed,
+        WSAStartupFailed,
+        Unknown = 9999
+    };
+    
+    // Error is trivially constructible and moveable; used for tagged error returns. All its constructors are constexpr and therefore are publicly accessible.
+    struct Error {
+    public:
+        ErrorCode code;
+        std::string message;
+    
+        constexpr Error(ErrorCode c) noexcept : code(c) {}
+        Error(ErrorCode c, const std::exception& e) noexcept : code(c), message(concat(c, e.what())) {}
+        Error(ErrorCode c, std::string msg) noexcept : code(c), message(concat(c, std::move(msg))) {}
+    
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        std::string_view what() const noexcept {
+            if (!message.empty()) {
+                return message;
+            } else {
+                return error_to_string(code);
+            }
+        }
+    
+        [[nodiscard("If you're going to use this, you should probably do something with it.")]]
+        ErrorCode code_value() const noexcept { return code; }
+    
+        bool operator==(ErrorCode other) const noexcept { return code == other; }
+        bool operator!=(ErrorCode other) const noexcept { return code != other; }
 
-    Error(ErrorCode c) : code(c) {}
-    Error(ErrorCode c, const std::exception& e) : code(c), message(e.what()) {}
-    Error(ErrorCode c, std::string msg) : code(c), message(std::move(msg)) {}
+    private:
+        static std::string concat(ErrorCode code, const std::string& msg) noexcept {
+            try {
+                return std::string(error_to_string(code)) + ": " + msg;
+            } catch (...) {
+                return std::string(error_to_string(code)); // fallback if even std::string throws (rare but technically possible)
+            }
+        }
+    };
 
-    std::string_view what() const noexcept { return message; }
-    ErrorCode code_value() const noexcept { return code; }
+    inline std::string to_string(const Error& error) noexcept {
+        return std::string(error.what()); // Always return a copy to be safe
+    }
 
-    bool operator==(ErrorCode other) const noexcept { return code == other; }
-    bool operator!=(ErrorCode other) const noexcept { return code != other; }
-};
+    inline constexpr const char* error_to_string(ErrorCode code) noexcept {
+        switch (code) {
+            case ErrorCode::InvalidAddress: return "Invalid address";
+            case ErrorCode::BindFailed: return "Bind failed";
+            case ErrorCode::ConnectFailed: return "Connect failed";
+            case ErrorCode::RecvFailed: return "Receive failed";
+            case ErrorCode::SendFailed: return "Send failed";
+            case ErrorCode::Timeout: return "Timeout";
+            case ErrorCode::Closed: return "Socket closed";
+            case ErrorCode::WouldBlock: return "Operation would block";
+            case ErrorCode::InvalidSocket: return "Invalid socket";
+            case ErrorCode::ConnectionReset: return "Connection reset";
+            case ErrorCode::PartialSend: return "Partial send";
+            case ErrorCode::UnsupportedAddressFamily: return "Unsupported address family";
+            case ErrorCode::SocketCreateFailed: return "Socket creation failed";
+            case ErrorCode::SocketConfigFailed: return "Socket configuration failed";
+            case ErrorCode::WSAStartupFailed: return "WSAStartup failed";
+            default: return "Unknown error";
+        }
+    }
 
 } // namespace oat::foo
+```
+
+Example for usage:
+```cpp
+[[nodiscard("Ignoring this means you don't care about the result. Fix it.")]]
+std::expected<void, oat::foo::Error> always_fails() {
+    return std::unexpected(oat::foo::ErrorCode::InvalidAddress);
+}
 ```
 
 ---
