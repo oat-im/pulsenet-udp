@@ -86,17 +86,17 @@ Your systems must report their state clearly.
 Your upgrades must never break clients unexpectedly.
 Your runtime must be predictable, even under fire.
 
-This isn’t your university’s C++ class.
-This isn’t your hobby project.
+This isn't your university's C++ class.
+This isn't your hobby project.
 This is Oat Interactive.
 
 Write like it.
 
 You are building distributed systems, games, tools, and backends that run in real-time, at scale. **There is no room for confusion, compromise, or convention soup.**
 
-If someone tells you “C++ can’t do that,” they're wrong. If someone tells you “everyone does it this way,” we’re not “everyone.”
+If someone tells you "C++ can't do that," they're wrong. If someone tells you "everyone does it this way," we're not "everyone."
 
-You write tight, minimal, debug-friendly, cross-platform code. Or you don’t ship at all.
+You write tight, minimal, debug-friendly, cross-platform code. Or you don't ship at all.
 
 ---
 
@@ -117,7 +117,7 @@ This is not Unreal. This is not Godot. This is **not** a retrofitted game engine
 
 You write systems. You write libraries. You build fast, deterministic code that's easy to debug and easy to reason about.
 
-> Welcome to Oat Interactive. If you're offended, good. You’re probably the problem.
+> Welcome to Oat Interactive. If you're offended, good. You're probably the problem.
 
 ---
 
@@ -127,7 +127,7 @@ You write systems. You write libraries. You build fast, deterministic code that'
 ### L.1. **Use C++23. No compromise.**
 <a name="l1-c23-standard"></a>
 
-If your compiler doesn’t support `std::expected`, `consteval`, or `[[nodiscard("...")]]` — upgrade or get lost.
+If your compiler doesn't support `std::expected`, `consteval`, or `[[nodiscard("...")]]` — upgrade or get lost.
 
 **Minimum standard: C++23.**
 Anything older is a maintenance bomb waiting to detonate.
@@ -167,7 +167,7 @@ std::expected<std::unique_ptr<MyObject>, Error> result = MyObject::Create("bad d
 if (!result) return result.error(); // Propagate Error
 ```
 
-Don’t like it? Go back to Java.
+Don't like it? Go back to Java.
 
 ---
 
@@ -351,7 +351,7 @@ Implementations of interfaces live in the `src/` directory and are not exposed p
 ### A.4. **Reasoning-Driven APIs: Clarity Above All.**
 <a name="a4-reasoning-driven-apis"></a>
 
-We don’t design APIs to “feel modern” or to be overly concise at the expense of clarity. We design them to:
+We don't design APIs to "feel modern" or to be overly concise at the expense of clarity. We design them to:
 
 *   Be **debuggable**: Call chains should be clear. State changes should be traceable.
 *   Be **testable**: Components should be injectable and mockable. Functionality should be verifiable in isolation.
@@ -483,7 +483,7 @@ While this document is an engineering standard, not a granular style guide, cert
 ### CSH.1: **Naming Conventions: Types, Variables, Functions, Interfaces.**
 <a name="csh1-naming-conventions-types-variables"></a>
 
-Consistent naming is not optional. It is mandatory for code clarity and long-term maintainability. If you don’t like it, enjoy working somewhere else.
+Consistent naming is not optional. It is mandatory for code clarity and long-term maintainability. If you don't like it, enjoy working somewhere else.
 
 ---
 
@@ -515,7 +515,7 @@ using UserId = uint64_t;
       void log(Level level, std::string_view msg) override;
   };
   ```
-* If you omit the `I` prefix, you’re wrong. Fix it immediately.
+* If you omit the `I` prefix, you're wrong. Fix it immediately.
 * See API.2 for more information on interfaces and object construction.
 
 ---
@@ -604,7 +604,7 @@ namespace oat::net {
 }
 ```
 
-* If you’re still writing macros instead of using `constexpr`, you’re doing it wrong.
+* If you're still writing macros instead of using `constexpr`, you're doing it wrong.
 
 ---
 
@@ -616,7 +616,7 @@ namespace oat::net {
 #define OAT_ENABLE_DEBUG_LOGGING 1
 ```
 
-* If you have more than 3 macros in your code, you’ve likely screwed up your design.
+* If you have more than 3 macros in your code, you've likely screwed up your design.
 
 ---
 
@@ -950,20 +950,18 @@ public:
 
 ---
 
-Alright, here’s the final addition:
+Alright, here's the final addition:
 
 ---
 
 ### API.3: **Explicit POD Declaration: Use `struct` for Trivial Types with Public Constructors.**
 <a name="api3-struct-pod"></a>
 
-If a type is trivial, purely a value container, and has no non-trivial invariants (i.e., it doesn’t throw, doesn’t own resources, and doesn’t require complex state management), you SHALL:
+If a type is trivial and its constructors are public and cannot throw, or is POD you SHALL:
 
 * Declare it as a `struct`, not a `class`.
-* Keep all members public.
-* Avoid constructors unless providing convenience initialization for POD fields only.
 
-This makes the purpose of the type immediately obvious: it’s a dumb bag of data.
+This makes the purpose of the type immediately obvious: You don't need a factory to create it because it's safe to do so with the constructors.
 
 #### ✅ Correct Example:
 
@@ -980,7 +978,7 @@ struct Point {
 #### ❌ Incorrect Example:
 
 ```cpp
-class Point { // ❌ Don’t do this.
+class Point { // ❌ Don't do this.
 public:
     Point(int x, int y) : x_(x), y_(y) {}
 private:
@@ -989,13 +987,13 @@ private:
 };
 ```
 
-| Rule                | Enforcement  |
-| ------------------- | ------------ |
-| Trivial POD Types   | Use `struct` |
-| Complex Stateful    | Use `class`  |
-| Public Constructor? | Only if POD  |
+| Rule                | Enforcement      |
+| ------------------- | ---------------- |
+| Trivial/POD Types   | Use `struct`     |
+| Complex Stateful    | Use `class`      |
+| Public Constructor? | Only on `struct` |
 
-This keeps the API surface clean and makes it immediately obvious what’s a value type and what’s a managed resource. No one should ever have to ask, “Can I just copy this, or does it secretly manage heap resources?”
+This keeps the API surface clean and makes it immediately obvious what's a value type and what's a managed resource. No one should ever have to ask, "Can I just copy this, or does it secretly manage heap resources?"
 
 ---
 
@@ -1009,7 +1007,7 @@ All public API functions that may fail SHALL:
 * Use `[[nodiscard("Handle this result! Failure to do so is a bug.")]]` on the function signature to enforce compile-time checking.
 * NEVER signal errors via `bool`, `nullptr`, magic integers, or `std::optional`.
 
-This is a modern C++ codebase. If you’re trying to sneak in failure signaling via weak types, you’re writing legacy garbage.
+This is a modern C++ codebase. If you're trying to sneak in failure signaling via weak types, you're writing legacy garbage.
 
 ---
 
@@ -1070,7 +1068,8 @@ namespace oat::foo {
         Unknown = 9999
     };
     
-    // Error is trivially constructible and moveable; used for tagged error returns. All its constructors are constexpr and therefore are publicly accessible.
+    // Error is trivially constructible and moveable; used for tagged error returns.
+    // All its constructors are constexpr and therefore are publicly accessible.
     struct Error {
     public:
         ErrorCode code;
@@ -1153,7 +1152,7 @@ std::expected<Widget, Error> CreateWidget(std::string_view name);
 std::expected<void, Error> SendMessage(const Widget& w, std::string_view msg);
 ```
 
-Failing to check these results MUST trigger compiler warnings or errors. If your compiler isn’t respecting it, fix your damn toolchain.
+Failing to check these results MUST trigger compiler warnings or errors. If your compiler isn't respecting it, fix your damn toolchain.
 
 ---
 
@@ -1204,7 +1203,7 @@ if (auto res = Shutdown(); !res) {
 * ❌ Exceptions in public API paths
 * ❌ Error signaling via `bool`, `nullptr`, or `std::optional`
 
-This is a modern, explicitly-typed, contract-driven system. You will not hide errors. You will handle them. Or the compiler will remind you that you’re incompetent.
+This is a modern, explicitly-typed, contract-driven system. You will not hide errors. You will handle them. Or the compiler will remind you that you're incompetent.
 
 ---
 
@@ -1568,7 +1567,7 @@ CMake is the build system for all Oat Interactive C++ projects. No excuses, no a
 ### CM.1: **You SHALL use CMake ≥ 3.15 (Preferably Latest Stable).**
 <a name="cm1-cmake-version"></a>
 
-If you’re using a CMake version older than 3.15, upgrade. We rely on modern CMake features for robust build logic, dependency management (`FetchContent`), and target-based property management. Aim to use a recent version (e.g., 3.20+ if possible) for access to the latest improvements.
+If you're using a CMake version older than 3.15, upgrade. We rely on modern CMake features for robust build logic, dependency management (`FetchContent`), and target-based property management. Aim to use a recent version (e.g., 3.20+ if possible) for access to the latest improvements.
 
 **Check your CMake version: `cmake --version`.**
 
@@ -1641,7 +1640,7 @@ This means your library's root `CMakeLists.txt` must:
     )
     ```
 
-You don’t need to write complex `FindYourLib.cmake` modules if your library is well-behaved with `FetchContent` and exports an alias.
+You don't need to write complex `FindYourLib.cmake` modules if your library is well-behaved with `FetchContent` and exports an alias.
 
 ---
 
@@ -1675,7 +1674,7 @@ The public headers of your library must reside in a namespaced subdirectory with
     ```
     The key is that `${CMAKE_CURRENT_SOURCE_DIR}/include` (for build tree) or `include` (for install tree, relative to `CMAKE_INSTALL_PREFIX`) is the path added to the include search paths, allowing the subsequent `oat/your_lib/header.h` to be resolved.
 
-**If you can’t explain the boundary between “installed headers” and “internal headers,” and how consumers include them, your CMake setup is broken.**
+**If you can't explain the boundary between "installed headers" and "internal headers," and how consumers include them, your CMake setup is broken.**
 
 ---
 
@@ -1741,9 +1740,9 @@ install(EXPORT oat_your_lib_ExportSet
 )
 ```
 *   Use `GNUInstallDirs` for standard paths (`CMAKE_INSTALL_LIBDIR`, `CMAKE_INSTALL_INCLUDEDIR`, etc.).
-*   Don’t just slap `install(DIRECTORY include/)`. Define your targets cleanly and export them properly using `install(EXPORT ...)` so consumers can use `find_package`.
+*   Don't just slap `install(DIRECTORY include/)`. Define your targets cleanly and export them properly using `install(EXPORT ...)` so consumers can use `find_package`.
 
-**You’re building libraries for consumption, not just throwing object files into a system directory.**
+**You're building libraries for consumption, not just throwing object files into a system directory.**
 
 ---
 
@@ -1852,7 +1851,7 @@ While unit tests have their place for small, isolated utility functions or class
     *   Utility classes with minimal state and no external dependencies (e.g., a custom string formatter, a bit manipulation helper).
     *   Testing specific edge cases of a well-encapsulated piece of logic that is hard to trigger through the public API of a larger system.
 
-**If you only wrote unit tests for your "manager" class's individual methods by mocking all its collaborators, you didn’t test your system—you tested your ability to write mocks.** True confidence comes from testing the integrated whole through its defined contract.
+**If you only wrote unit tests for your "manager" class's individual methods by mocking all its collaborators, you didn't test your system—you tested your ability to write mocks.** True confidence comes from testing the integrated whole through its defined contract.
 
 ---
 
@@ -1926,7 +1925,7 @@ Oat Interactive software is cross-platform. "Works on my machine" is not an acce
 3.  **CI Configuration as Code:** The CI pipeline configuration (e.g., `.gitlab-ci.yml`, GitHub Actions workflow files) is part of the repository and treated as code.
 4.  **Failing Build Breaks the Change:** A CI build that fails (either compilation or tests) MUST prevent the change from being merged until fixed.
 
-**If your library doesn’t have a CI configuration that successfully builds and tests on all target platforms, your library effectively doesn’t exist in a shippable state.**
+**If your library doesn't have a CI configuration that successfully builds and tests on all target platforms, your library effectively doesn't exist in a shippable state.**
 
 ---
 
@@ -2060,7 +2059,7 @@ Log messages must be informative and easy to parse, both for humans and machines
 3.  **Structured Logging (If Supported by Implementation):**
     While the basic interface uses strings, concrete `Logger` implementations might support structured logging (key-value pairs). If so, prefer it for easier machine parsing. The interface itself remains simple.
 
-**You’re not writing a personal diary. You’re instrumenting a system for operations, debugging, and automated analysis. Make your logs count.**
+**You're not writing a personal diary. You're instrumenting a system for operations, debugging, and automated analysis. Make your logs count.**
 
 ---
 
@@ -2343,7 +2342,7 @@ API versioning for C++ libraries should be explicit and manageable, not hidden b
 3.  **Avoid Template Metaprogramming / SFINAE for API Versioning:**
     While powerful, using complex template techniques (like SFINAE) to subtly change API behavior or signatures based on template parameters or type traits for versioning purposes makes the API opaque and difficult to reason about for users. Keep API contracts clear and explicit.
 
-**Versioning is a runtime-negotiated contract (for protocols/formats) or an explicit code-level contract (for C++ APIs). Don’t try to be "clever" with compile-time magic to hide version differences in a single API surface; it rarely ends well.** Be explicit. If it's a V2 API, call it a V2 API.
+**Versioning is a runtime-negotiated contract (for protocols/formats) or an explicit code-level contract (for C++ APIs). Don't try to be "clever" with compile-time magic to hide version differences in a single API surface; it rarely ends well.** Be explicit. If it's a V2 API, call it a V2 API.
 
 ---
 
@@ -2406,7 +2405,7 @@ This is a quick checklist. If you find yourself doing any of these, pause, take 
 *   **You're writing templates for code that isn't genuinely generic across multiple, unrelated types.**
     *   *Why stop?* Templates add compile-time overhead and complexity. Only use them when the generic algorithm or data structure truly applies to a family of types that cannot be reasonably handled by runtime polymorphism or simple function overloading. Don't use templates just to avoid writing a function twice for `int` and `float` if that's the only use case.
 
-*   **You're wrapping everything in a "Manager" class (e.g., `SessionManager`, `NetworkManager`, `UIManager`) because you don’t have a clearer name or defined responsibility for the component.**
+*   **You're wrapping everything in a "Manager" class (e.g., `SessionManager`, `NetworkManager`, `UIManager`) because you don't have a clearer name or defined responsibility for the component.**
     *   *Why stop?* "Manager" is often a sign of a god object or a class with poorly defined, overly broad responsibilities. Try to break down "managers" into smaller, more focused components with clear, single responsibilities.
 
 *   **You're hiding I/O (network, disk) behind lambda callbacks passed deep into a system, instead of using explicit I/O calls or a proper event dispatch/`tick()` mechanism.**
@@ -2434,13 +2433,13 @@ This is a quick checklist. If you find yourself doing any of these, pause, take 
 
 This is not a style guide. This is survival gear.
 
-You’re building multiplayer networking stacks, real-time game engines, simulation backends, and systems that cannot afford runtime surprises, memory leaks, ABI mismatches, or vague contracts.
+You're building multiplayer networking stacks, real-time game engines, simulation backends, and systems that cannot afford runtime surprises, memory leaks, ABI mismatches, or vague contracts.
 
 **There is no room for "but it worked on my machine."**
 **There is no room for "but Unreal does it this way."**
 **There is no room for "but I like exceptions."**
 
-Read the rules again if you're confused. They’re not optional. This manual is your contract. Violate it, and you're writing tech debt the team has to pay off later.
+Read the rules again if you're confused. They're not optional. This manual is your contract. Violate it, and you're writing tech debt the team has to pay off later.
 
 To recap:
 
@@ -2448,10 +2447,10 @@ To recap:
 * If your header pulls in half the STL for no reason, it's wrong.
 * If your object construction isn't wrapped in a factory returning `std::expected`, it's wrong.
 * If your test isn't integration-first and deterministic, it's wrong.
-* If your API doesn’t make side effects explicit, it’s wrong.
-* If your memory ownership model isn’t obvious from the signature, it’s wrong.
-* If your CMake setup can’t build, install, and be consumed via `FetchContent`, it’s wrong.
+* If your API doesn't make side effects explicit, it's wrong.
+* If your memory ownership model isn't obvious from the signature, it's wrong.
+* If your CMake setup can't build, install, and be consumed via `FetchContent`, it's wrong.
 
-Don’t get clever. Get correct.
+Don't get clever. Get correct.
 
 **You are now an Oat Interactive C++ engineer. Write like it. Ship like it. Or get out of the way.**
