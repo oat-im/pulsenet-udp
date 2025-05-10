@@ -13,8 +13,9 @@
 namespace pulse::net::udp {
 
     struct ReceivedPacket {
-        const uint8_t* data;
-        size_t length;
+        uint8_t* data;
+        size_t size; // Size of the received data
+        size_t capacity; // Size of the allocated buffer
         Addr addr;
     };
 
@@ -33,6 +34,10 @@ namespace pulse::net::udp {
         /// Receives a packet. The returned `data` pointer is valid only until the next recvFrom() call on the same thread.
         [[nodiscard("You're ignoring an error message. Don't do that.")]]
         virtual std::expected<ReceivedPacket, Error> recvFrom() = 0;
+
+        /// Receives a packet from a connected address using a given buffer.
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        virtual std::expected<ReceivedPacket, Error> recvFrom(ReceivedPacket&& packet) = 0;
 
         // Returns underlying socket fd/handle if needed
         [[nodiscard("You're ignoring an error message. Don't do that.")]]

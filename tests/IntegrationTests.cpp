@@ -1,4 +1,5 @@
 #include <iostream>
+#include <tuple>
 #include <pulse/net/udp/udp.h>
 
 int main () {
@@ -48,9 +49,10 @@ int main () {
         return 1;
     }
 
-    const auto& [recvData, length, addr] = *recvResult;
+    const auto& [recvData, length, unused, addr] = *recvResult;
+    (void)unused; // Unused variable, but we need to keep it for the tuple unpacking
     std::string receivedMessage(reinterpret_cast<const char*>(recvData), length);
-    std::cout << "Received message: " << receivedMessage << " from " << addr.ip << ":" << addr.port << std::endl;
+    std::cout << "Received a " << length << " byte message: " << receivedMessage << " from " << addr.ip << ":" << addr.port << std::endl;
 
     if (receivedMessage != message) {
         std::cerr << "Received message does not match sent message." << std::endl;

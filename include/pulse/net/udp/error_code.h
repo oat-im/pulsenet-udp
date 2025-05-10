@@ -73,6 +73,8 @@ namespace pulse::net::udp {
 
     template <class... Args>
     inline std::unexpected<Error> make_unexpected(Args&&... args) noexcept {
+        static_assert(std::is_constructible_v<Error, Args...>, 
+                    "Invalid arguments for Error constructor.");
         return std::unexpected<Error>(std::in_place, std::forward<Args>(args)...);
     }
 

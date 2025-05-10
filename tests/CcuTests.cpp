@@ -39,7 +39,8 @@ int handleServer() {
             continue;
         }
 
-        const auto& [data, length, addr] = *packet;
+        const auto& [data, length, unused, addr] = *packet;
+        (void)unused; // Unused variable, but we need to keep it for the tuple unpacking
         std::string clientKey = addr.ip + ":" + std::to_string(addr.port);
         clientDatagramCount[clientKey]++;
 

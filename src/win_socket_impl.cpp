@@ -125,13 +125,26 @@ namespace pulse::net::udp {
 
     std::expected<ReceivedPacket, Error> SocketWindows::recvFrom() {
         static thread_local uint8_t buf[kPacketBufferSize];
+    
+        return recvFrom(ReceivedPacket{
+            .data = buf,
+            .size = 0,
+            .capacity = kPacketBufferSize
+        });
+    }
+
+    std::expected<ReceivedPacket, Error> SocketWindows::recvFrom(ReceivedPacket&& packet) {
+        if (packet.data == nullptr || packet.capacity < kPacketBufferSize) {
+            return make_unexpected(ErrorCode::InvalidAddress);
+        }
+
         sockaddr_storage src{};
         int srclen = sizeof(src);
     
         int received = ::recvfrom(
             sock_,
-            reinterpret_cast<char*>(buf),
-            sizeof(buf),
+            reinterpret_cast<char*>(packet.data),
+            packet.capacity,
             0,
             reinterpret_cast<sockaddr*>(&src),
             &srclen
@@ -144,18 +157,17 @@ namespace pulse::net::udp {
     
         auto addr = DecodeAddr(reinterpret_cast<sockaddr*>(&src));
         if (!addr) {
-            return std::unexpected(addr.error());
+            return make_unexpected(addr.error());
         }
     
         if (addr->port == 0) {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
-    
-        return ReceivedPacket{
-            .data = reinterpret_cast<const uint8_t*>(buf),
-            .length = static_cast<size_t>(received),
-            .addr = std::move(*addr)
-        };
+
+        packet.size = static_cast<size_t>(received);
+        packet.addr = std::move(*addr);
+
+        return std::move(packet);
     }
     
     std::expected<int, Error> SocketWindows::getHandle() const {

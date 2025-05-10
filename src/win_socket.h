@@ -16,6 +16,9 @@ namespace pulse::net::udp {
         
         [[nodiscard("You're ignoring an error message. Don't do that.")]]
         std::expected<ReceivedPacket, Error> recvFrom() override;
+    
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        std::expected<ReceivedPacket, Error> recvFrom(ReceivedPacket&& packet) override;
         
         [[nodiscard("You're ignoring an error message. Don't do that.")]]
         std::expected<int, Error> getHandle() const override;

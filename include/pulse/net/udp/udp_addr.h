@@ -12,7 +12,8 @@ namespace pulse::net::udp {
 
     class Addr {
     public:
-
+        // We need to be able to support default construction.
+        Addr() = default;
         std::string ip;
         uint16_t port;
 
@@ -41,7 +42,6 @@ namespace pulse::net::udp {
     private:
         alignas(16) char storage_[128]{}; // big enough for sockaddr_in6
         
-        Addr() = default;
         Addr(const std::string& ip, uint16_t port);
     };
 

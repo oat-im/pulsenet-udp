@@ -28,6 +28,21 @@ namespace pulse::net::udp {
                 return make_unexpected(ErrorCode::SendFailed);
         }
     }
+    
+    [[nodiscard("Why ask for an ErrorCode and then ignore it?")]]
+    inline std::unexpected<Error> map_rev_error(int err) {
+        switch (errno) {
+            case EWOULDBLOCK:
+                return make_unexpected(ErrorCode::WouldBlock);
+
+            case EBADF:
+            case ENOTSOCK:
+                return make_unexpected(ErrorCode::InvalidSocket);
+
+            default:
+                return make_unexpected(ErrorCode::RecvFailed);
+        }
+    }
 
     std::expected<void, Error> SocketUnix::sendTo(const Addr& addr, const uint8_t* data, size_t length) {
         ssize_t sent = sendto(
@@ -66,52 +81,55 @@ namespace pulse::net::udp {
 
     std::expected<ReceivedPacket, Error> SocketUnix::recvFrom() {
         static thread_local uint8_t buf[kPacketBufferSize];
+    
+        return recvFrom(ReceivedPacket{
+            .data = buf,
+            .size = 0,
+            .capacity = kPacketBufferSize,
+        });
+    }
+
+    std::expected<ReceivedPacket, Error> SocketUnix::recvFrom(ReceivedPacket&& packet) {
+        if (packet.data == nullptr || packet.capacity < kPacketBufferSize) {
+            return make_unexpected(ErrorCode::InvalidAddress);
+        }
+        
         sockaddr_storage src{};
         socklen_t srclen = sizeof(src);
     
         ssize_t received = ::recvfrom(
             sockfd_,
-            buf,
-            sizeof(buf),
+            packet.data,
+            packet.capacity,
             0,
             reinterpret_cast<sockaddr*>(&src),
             &srclen
         );
     
         if (received < 0) {
-            switch (errno) {
-                case EWOULDBLOCK:
-                    return make_unexpected(ErrorCode::WouldBlock);
-    
-                case EBADF:
-                case ENOTSOCK:
-                    return make_unexpected(ErrorCode::InvalidSocket);
-    
-                default:
-                    return make_unexpected(ErrorCode::RecvFailed);
-            }
+            return map_rev_error(errno);
         }
     
         if (received == 0) {
             return make_unexpected(ErrorCode::Closed); // rare, but possible
+        } else {
+            packet.size = static_cast<size_t>(received);
         }
     
         auto addr_result = DecodeAddr(reinterpret_cast<sockaddr*>(&src));
         if (!addr_result) {
-            return std::unexpected(addr_result.error());
+            return make_unexpected(addr_result.error());
         }
 
         const auto& addr = *addr_result;
         if (addr.port == 0) {
             return make_unexpected(ErrorCode::InvalidAddress);
+        } else {
+            packet.addr = std::move(*addr_result);
         }
-
-        return ReceivedPacket{
-            .data = reinterpret_cast<const uint8_t*>(buf),
-            .length = static_cast<size_t>(received),
-            .addr = addr
-        };
-    }    
+        
+        return std::move(packet);
+    }
 
     std::expected<int, Error> SocketUnix::getHandle() const {
         if (sockfd_ == -1) {
