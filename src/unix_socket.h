@@ -9,8 +9,6 @@ struct sockaddr;
 
 namespace pulse::net::udp {
 
-    constexpr size_t PACKET_BUFFER_SIZE = 2048;
-
     class SocketUnix : public ISocket {
     public:
         SocketUnix(int sockfd) : sockfd_(sockfd) {}

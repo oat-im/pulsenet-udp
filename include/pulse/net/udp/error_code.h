@@ -71,8 +71,9 @@ namespace pulse::net::udp {
         return to_string(error.error());
     }
 
-    inline std::unexpected<Error> make_unexpected(ErrorCode code) noexcept {
-        return std::unexpected(Error(code));
+    template <class... Args>
+    inline std::unexpected<Error> make_unexpected(Args&&... args) noexcept {
+        return std::unexpected<Error>(std::in_place, std::forward<Args>(args)...);
     }
 
     inline constexpr const char* error_to_string(ErrorCode code) noexcept {

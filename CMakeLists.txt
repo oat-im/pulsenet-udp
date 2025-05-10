@@ -81,13 +81,13 @@ install(FILES
 )
 
 if (PULSENET_UDP_STANDALONE_BUILD)
-    add_executable(pulsenet_udp_test tests/IntegrationTest.cpp)
+    add_executable(pulsenet_udp_test tests/IntegrationTests.cpp)
     target_link_libraries(pulsenet_udp_test PRIVATE pulsenet_udp)
 
     install(TARGETS pulsenet_udp_test
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     
-    add_executable(pulsenet_udp_ccu_test tests/CCUTest.cpp)
+    add_executable(pulsenet_udp_ccu_test tests/CcuTests.cpp)
     target_link_libraries(pulsenet_udp_ccu_test PRIVATE pulsenet_udp)
 
     install(TARGETS pulsenet_udp_ccu_test

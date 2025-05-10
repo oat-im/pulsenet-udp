@@ -7,12 +7,12 @@ namespace pulse::net::udp {
 
     class WindowsSocketFactory : public ISocketFactory {
     public:
-        std::expected<std::unique_ptr<ISocket>, Error> listen(const Addr& bindAddr) override {
-            return SocketWindows::Listen(bindAddr);
+        std::expected<std::unique_ptr<ISocket>, Error> listen(const Addr& bind_addr) override {
+            return SocketWindows::Listen(bind_addr);
         }
 
-        std::expected<std::unique_ptr<ISocket>, Error> dial(const Addr& remoteAddr) override {
-            return SocketWindows::Dial(remoteAddr);
+        std::expected<std::unique_ptr<ISocket>, Error> dial(const Addr& remote_addr) override {
+            return SocketWindows::Dial(remote_addr);
         }
     };
 

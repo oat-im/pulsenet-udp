@@ -41,38 +41,48 @@ This library fixes that with a clean, modern API that doesn’t try to reinvent 
 ## 🧑‍💻 Usage
 
 ```cpp
-#include <pulse/net/udp/udp.h>
+#include <pulse/net/udp/udp.h> // For ISocket, Addr, ErrorCode
+#include <pulse/net/udp/socket_factory.h> // For get_socket_factory()
 #include <iostream>
 #include <vector>
 
 int main() {
     using namespace pulse::net::udp;
 
-    Addr serverAddr("127.0.0.1", 9000);
+    auto serverAddrResult = Addr::Create("127.0.0.1", 9000);
+    if (!serverAddrResult) {
+        std::cerr << "Server Addr::Create failed: " << to_string(serverAddrResult.error()) << "\n";
+        return 1;
+    }
+    auto& serverAddr = *serverAddrResult;
 
-    auto serverResult = Listen(serverAddr);
+    ISocketFactory* factory = get_socket_factory();
+
+    auto serverResult = factory->listen(serverAddr);
     if (!serverResult) {
-        std::cerr << "Listen failed: " << static_cast<int>(serverResult.error()) << "\n";
+        std::cerr << "Listen failed: " << to_string(serverResult.error()) << "\n";
         return 1;
     }
-    auto& server = *serverResult;
+    auto& server = **serverResult; // Note: serverResult is expected<unique_ptr<ISocket>, ...>
 
-    auto clientResult = Dial(serverAddr);
+    auto clientResult = factory->dial(serverAddr);
     if (!clientResult) {
-        std::cerr << "Dial failed: " << static_cast<int>(clientResult.error()) << "\n";
+        std::cerr << "Dial failed: " << to_string(clientResult.error()) << "\n";
         return 1;
     }
-    auto& client = *clientResult;
+    auto& client = **clientResult;
 
     std::vector<uint8_t> message = {'h', 'e', 'l', 'l', 'o'};
+    // Note: The original example uses client->send, which is fine for a dialed socket.
+    // The example below assumes client is std::unique_ptr<ISocket>& client = *clientResult;
     if (auto res = client->send(message.data(), message.size()); !res) {
-        std::cerr << "Send failed: " << static_cast<int>(res.error()) << "\n";
+        std::cerr << "Send failed: " << to_string(res.error()) << "\n";
         return 1;
     }
 
     auto recvResult = server->recvFrom();
     if (!recvResult) {
-        std::cerr << "Receive failed: " << static_cast<int>(recvResult.error()) << "\n";
+        std::cerr << "Receive failed: " << to_string(recvResult.error()) << "\n";
         return 1;
     }
 

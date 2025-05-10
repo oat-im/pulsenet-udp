@@ -15,30 +15,30 @@
 
 namespace pulse::net::udp {
 
-    constexpr size_t PACKET_BUFFER_SIZE = 2048;
+    constexpr size_t kPacketBufferSize = 2048;
 
-    static std::atomic<int> wsaRefCount{0};
-    static std::mutex wsaMutex;
+    static std::atomic<int> wsa_ref_count{0};
+    static std::mutex wsa_mutex;
 
     [[nodiscard("You're ignoring the possibility of failure.")]]
     static std::expected<void, Error> init_wsa() {
-        std::lock_guard<std::mutex> lock(wsaMutex);
-        if (wsaRefCount == 0) {
+        std::lock_guard<std::mutex> lock(wsa_mutex);
+        if (wsa_ref_count == 0) {
             WSADATA wsaData;
             if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
                 return make_unexpected(ErrorCode::WSAStartupFailed);
             }
         }
-        ++wsaRefCount;
+        ++wsa_ref_count;
         return {};
     }
 
 
     static void cleanup_wsa() {
-        std::lock_guard<std::mutex> lock(wsaMutex);
-        if (wsaRefCount > 0) {
-            wsaRefCount--;
-            if (wsaRefCount == 0) {
+        std::lock_guard<std::mutex> lock(wsa_mutex);
+        if (wsa_ref_count > 0) {
+            wsa_ref_count--;
+            if (wsa_ref_count == 0) {
                 WSACleanup();
             }
         }
@@ -67,18 +67,18 @@ namespace pulse::net::udp {
 
     SocketWindows::SocketWindows(SOCKET sock) : sock_(sock) {
         // Increase socket buffer sizes but don't start receiving thread
-        int sendBufSize = 4 * 1024 * 1024; // 4MB
-        setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize, sizeof(sendBufSize));
+        int send_buf_size = 4 * 1024 * 1024; // 4MB
+        setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char*)&send_buf_size, sizeof(send_buf_size));
         
         // We still need a reasonable receive buffer for any responses
-        int recvBufSize = 1 * 1024 * 1024; // 1MB is enough for client
-        setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&recvBufSize, sizeof(recvBufSize));
+        int recv_buf_size = 1 * 1024 * 1024; // 1MB is enough for client
+        setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&recv_buf_size, sizeof(recv_buf_size));
         
         // Disable connection reset behavior
-        BOOL bNewBehavior = FALSE;
-        DWORD dwBytesReturned = 0;
-        WSAIoctl(sock, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), 
-                NULL, 0, &dwBytesReturned, NULL, NULL);
+        BOOL new_behavior = FALSE;
+        DWORD bytes_returned = 0;
+        WSAIoctl(sock, SIO_UDP_CONNRESET, &new_behavior, sizeof(new_behavior), 
+                NULL, 0, &bytes_returned, NULL, NULL);
     }
 
     SocketWindows::~SocketWindows() {
@@ -124,7 +124,7 @@ namespace pulse::net::udp {
     }
 
     std::expected<ReceivedPacket, Error> SocketWindows::recvFrom() {
-        static thread_local uint8_t buf[PACKET_BUFFER_SIZE];
+        static thread_local uint8_t buf[kPacketBufferSize];
         sockaddr_storage src{};
         int srclen = sizeof(src);
     
@@ -196,27 +196,27 @@ namespace pulse::net::udp {
         return Addr::Create(ip, port);
     }
 
-    std::expected<std::unique_ptr<ISocket>, Error> SocketWindows::Listen(const Addr& bindAddr) {
+    std::expected<std::unique_ptr<ISocket>, Error> SocketWindows::Listen(const Addr& bind_addr) {
         if (auto err = init_wsa(); !err) {
             return std::unexpected(err.error());
         }
 
         int family = AF_INET;
-        const void* addrPtr = nullptr;
+        const void* addr_ptr = nullptr;
 
         sockaddr_in addr4{};
         sockaddr_in6 addr6{};
 
-        if (inet_pton(AF_INET, bindAddr.ip.c_str(), &addr4.sin_addr) == 1) {
+        if (inet_pton(AF_INET, bind_addr.ip.c_str(), &addr4.sin_addr) == 1) {
             family = AF_INET;
             addr4.sin_family = AF_INET;
-            addr4.sin_port = htons(bindAddr.port);
-            addrPtr = &addr4;
-        } else if (inet_pton(AF_INET6, bindAddr.ip.c_str(), &addr6.sin6_addr) == 1) {
+            addr4.sin_port = htons(bind_addr.port);
+            addr_ptr = &addr4;
+        } else if (inet_pton(AF_INET6, bind_addr.ip.c_str(), &addr6.sin6_addr) == 1) {
             family = AF_INET6;
             addr6.sin6_family = AF_INET6;
-            addr6.sin6_port = htons(bindAddr.port);
-            addrPtr = &addr6;
+            addr6.sin6_port = htons(bind_addr.port);
+            addr_ptr = &addr6;
         } else {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
@@ -234,7 +234,7 @@ namespace pulse::net::udp {
 
         int result = bind(
             sock,
-            reinterpret_cast<const sockaddr*>(addrPtr),
+            reinterpret_cast<const sockaddr*>(addr_ptr),
             (family == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6)
         );
 
@@ -246,27 +246,27 @@ namespace pulse::net::udp {
         return std::make_unique<SocketWindows>(sock);
     }
 
-    std::expected<std::unique_ptr<ISocket>, Error> SocketWindows::Dial(const Addr& remoteAddr) {
+    std::expected<std::unique_ptr<ISocket>, Error> SocketWindows::Dial(const Addr& remote_addr) {
         if (auto err = init_wsa(); !err) {
             return std::unexpected(err.error());
         }
 
         int family = AF_INET;
-        sockaddr_storage remoteSock{};
-        int remoteLen = 0;
+        sockaddr_storage remote_sock{};
+        int remote_len = 0;
 
-        if (InetPtonA(AF_INET, remoteAddr.ip.c_str(), &reinterpret_cast<sockaddr_in*>(&remoteSock)->sin_addr) == 1) {
-            auto* addr4 = reinterpret_cast<sockaddr_in*>(&remoteSock);
+        if (InetPtonA(AF_INET, remote_addr.ip.c_str(), &reinterpret_cast<sockaddr_in*>(&remote_sock)->sin_addr) == 1) {
+            auto* addr4 = reinterpret_cast<sockaddr_in*>(&remote_sock);
             family = AF_INET;
             addr4->sin_family = AF_INET;
-            addr4->sin_port = htons(remoteAddr.port);
-            remoteLen = sizeof(sockaddr_in);
-        } else if (InetPtonA(AF_INET6, remoteAddr.ip.c_str(), &reinterpret_cast<sockaddr_in6*>(&remoteSock)->sin6_addr) == 1) {
-            auto* addr6 = reinterpret_cast<sockaddr_in6*>(&remoteSock);
+            addr4->sin_port = htons(remote_addr.port);
+            remote_len = sizeof(sockaddr_in);
+        } else if (InetPtonA(AF_INET6, remote_addr.ip.c_str(), &reinterpret_cast<sockaddr_in6*>(&remote_sock)->sin6_addr) == 1) {
+            auto* addr6 = reinterpret_cast<sockaddr_in6*>(&remote_sock);
             family = AF_INET6;
             addr6->sin6_family = AF_INET6;
-            addr6->sin6_port = htons(remoteAddr.port);
-            remoteLen = sizeof(sockaddr_in6);
+            addr6->sin6_port = htons(remote_addr.port);
+            remote_len = sizeof(sockaddr_in6);
         } else {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
@@ -283,12 +283,20 @@ namespace pulse::net::udp {
             return make_unexpected(ErrorCode::SocketConfigFailed);
         }
 
-        if (connect(sock, reinterpret_cast<sockaddr*>(&remoteSock), remoteLen) == SOCKET_ERROR) {
+        if (connect(sock, reinterpret_cast<sockaddr*>(&remote_sock), remote_len) == SOCKET_ERROR) {
             closesocket(sock);
             return make_unexpected(ErrorCode::ConnectFailed);
         }
 
-        return std::make_unique<SocketWindows>(sock);
+        try {
+            return std::make_unique<SocketWindows>(sock);
+        } catch (std::bad_alloc& err) {
+            closesocket(sock);
+            return make_unexpected(ErrorCode::SocketCreateFailed, err);
+        } catch (...) {
+            closesocket(sock);
+            return make_unexpected(ErrorCode::SocketCreateFailed, "Unknown error occurred while creating SocketWindows");
+        }
     }
 
 

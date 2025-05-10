@@ -11,6 +11,8 @@
 #include "unix_socket.h"
 
 namespace pulse::net::udp {
+
+    constexpr size_t kPacketBufferSize = 2048;
     
     [[nodiscard("Why ask for an ErrorCode and then ignore it?")]]
     inline std::unexpected<Error> map_send_error(int err) {
@@ -63,7 +65,7 @@ namespace pulse::net::udp {
     }
 
     std::expected<ReceivedPacket, Error> SocketUnix::recvFrom() {
-        static thread_local uint8_t buf[PACKET_BUFFER_SIZE];
+        static thread_local uint8_t buf[kPacketBufferSize];
         sockaddr_storage src{};
         socklen_t srclen = sizeof(src);
     
@@ -94,12 +96,12 @@ namespace pulse::net::udp {
             return make_unexpected(ErrorCode::Closed); // rare, but possible
         }
     
-        auto addrResult = DecodeAddr(reinterpret_cast<sockaddr*>(&src));
-        if (!addrResult) {
-            return std::unexpected(addrResult.error());
+        auto addr_result = DecodeAddr(reinterpret_cast<sockaddr*>(&src));
+        if (!addr_result) {
+            return std::unexpected(addr_result.error());
         }
 
-        const auto& addr = *addrResult;
+        const auto& addr = *addr_result;
         if (addr.port == 0) {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
@@ -148,23 +150,23 @@ namespace pulse::net::udp {
         return Addr::Create(ip, port);
     }
 
-    std::expected<std::unique_ptr<ISocket>, Error> SocketUnix::Listen(const Addr& bindAddr) {
+    std::expected<std::unique_ptr<ISocket>, Error> SocketUnix::Listen(const Addr& bind_addr) {
         int family = AF_INET;
-        const void* addrPtr = nullptr;
+        const void* addr_ptr = nullptr;
 
         sockaddr_in addr4{};
         sockaddr_in6 addr6{};
 
-        if (inet_pton(AF_INET, bindAddr.ip.c_str(), &addr4.sin_addr) == 1) {
+        if (inet_pton(AF_INET, bind_addr.ip.c_str(), &addr4.sin_addr) == 1) {
             family = AF_INET;
             addr4.sin_family = AF_INET;
-            addr4.sin_port = htons(bindAddr.port);
-            addrPtr = &addr4;
-        } else if (inet_pton(AF_INET6, bindAddr.ip.c_str(), &addr6.sin6_addr) == 1) {
+            addr4.sin_port = htons(bind_addr.port);
+            addr_ptr = &addr4;
+        } else if (inet_pton(AF_INET6, bind_addr.ip.c_str(), &addr6.sin6_addr) == 1) {
             family = AF_INET6;
             addr6.sin6_family = AF_INET6;
-            addr6.sin6_port = htons(bindAddr.port);
-            addrPtr = &addr6;
+            addr6.sin6_port = htons(bind_addr.port);
+            addr_ptr = &addr6;
         } else {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
@@ -183,7 +185,7 @@ namespace pulse::net::udp {
 
         // Bind
         socklen_t socklen = (family == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-        if (::bind(sockfd, reinterpret_cast<const sockaddr*>(addrPtr), socklen) < 0) {
+        if (::bind(sockfd, reinterpret_cast<const sockaddr*>(addr_ptr), socklen) < 0) {
             ::close(sockfd);
             return make_unexpected(ErrorCode::BindFailed);
         }
@@ -191,23 +193,23 @@ namespace pulse::net::udp {
         return std::make_unique<SocketUnix>(sockfd);
     }
 
-    std::expected<std::unique_ptr<ISocket>, Error> SocketUnix::Dial(const Addr& remoteAddr) {
+    std::expected<std::unique_ptr<ISocket>, Error> SocketUnix::Dial(const Addr& remote_addr) {
         int family = AF_INET;
-        sockaddr_storage remoteSock{};
-        socklen_t remoteLen = 0;
+        sockaddr_storage remote_sock{};
+        socklen_t remote_len = 0;
 
-        if (inet_pton(AF_INET, remoteAddr.ip.c_str(), &reinterpret_cast<sockaddr_in*>(&remoteSock)->sin_addr) == 1) {
-            auto* addr4 = reinterpret_cast<sockaddr_in*>(&remoteSock);
+        if (inet_pton(AF_INET, remote_addr.ip.c_str(), &reinterpret_cast<sockaddr_in*>(&remote_sock)->sin_addr) == 1) {
+            auto* addr4 = reinterpret_cast<sockaddr_in*>(&remote_sock);
             family = AF_INET;
             addr4->sin_family = AF_INET;
-            addr4->sin_port = htons(remoteAddr.port);
-            remoteLen = sizeof(sockaddr_in);
-        } else if (inet_pton(AF_INET6, remoteAddr.ip.c_str(), &reinterpret_cast<sockaddr_in6*>(&remoteSock)->sin6_addr) == 1) {
-            auto* addr6 = reinterpret_cast<sockaddr_in6*>(&remoteSock);
+            addr4->sin_port = htons(remote_addr.port);
+            remote_len = sizeof(sockaddr_in);
+        } else if (inet_pton(AF_INET6, remote_addr.ip.c_str(), &reinterpret_cast<sockaddr_in6*>(&remote_sock)->sin6_addr) == 1) {
+            auto* addr6 = reinterpret_cast<sockaddr_in6*>(&remote_sock);
             family = AF_INET6;
             addr6->sin6_family = AF_INET6;
-            addr6->sin6_port = htons(remoteAddr.port);
-            remoteLen = sizeof(sockaddr_in6);
+            addr6->sin6_port = htons(remote_addr.port);
+            remote_len = sizeof(sockaddr_in6);
         } else {
             return make_unexpected(ErrorCode::InvalidAddress);
         }
@@ -224,12 +226,20 @@ namespace pulse::net::udp {
             return make_unexpected(ErrorCode::SocketConfigFailed);
         }
 
-        if (connect(sockfd, reinterpret_cast<sockaddr*>(&remoteSock), remoteLen) < 0) {
+        if (connect(sockfd, reinterpret_cast<sockaddr*>(&remote_sock), remote_len) < 0) {
             ::close(sockfd);
             return make_unexpected(ErrorCode::ConnectFailed);
         }
 
-        return std::make_unique<SocketUnix>(sockfd);
+        try {
+            return std::make_unique<SocketUnix>(sockfd);
+        } catch (std::bad_alloc& err) {
+            ::close(sockfd);
+            return make_unexpected(ErrorCode::SocketCreateFailed, err);
+        } catch (...) {
+            ::close(sockfd);
+            return make_unexpected(ErrorCode::Unknown, "Unknown error occurred while creating SocketUnix");
+        }
     }
 
 } // namespace pulse::net::udp

@@ -11,20 +11,20 @@ namespace pulse::net::udp {
     const char* Addr::kAnyIPv4 = "0.0.0.0";
     const char* Addr::kAnyIPv6 = "::";
 
-    Addr::Addr(const std::string& ipStr, uint16_t port)
-        : ip(ipStr), port(port)
+    Addr::Addr(const std::string& ip_str, uint16_t port)
+        : ip(ip_str), port(port)
     {
         sockaddr_in* addr4 = reinterpret_cast<sockaddr_in*>(storage_);
         sockaddr_in6* addr6 = reinterpret_cast<sockaddr_in6*>(storage_);
 
-        if (InetPtonA(AF_INET, ipStr.c_str(), &addr4->sin_addr) == 1) {
+        if (InetPtonA(AF_INET, ip_str.c_str(), &addr4->sin_addr) == 1) {
             addr4->sin_family = AF_INET;
             addr4->sin_port = htons(port);
-        } else if (InetPtonA(AF_INET6, ipStr.c_str(), &addr6->sin6_addr) == 1) {
+        } else if (InetPtonA(AF_INET6, ip_str.c_str(), &addr6->sin6_addr) == 1) {
             addr6->sin6_family = AF_INET6;
             addr6->sin6_port = htons(port);
         } else {
-            throw std::invalid_argument("Invalid IP address: " + ipStr);
+            throw std::invalid_argument("Invalid IP address: " + ip_str);
         }
     }
 
