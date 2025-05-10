@@ -1,11 +1,14 @@
 #pragma once
 
+#include <string>
+#include <string_view>
+#include <exception>
+#include <expected>
+
 namespace pulse::net::udp {
 
     enum class ErrorCode {
-        None = 0,
-        InvalidAddress,
-        SocketCreationFailed,
+        InvalidAddress = 1,
         BindFailed,
         ConnectFailed,
         RecvFailed,
@@ -22,12 +25,59 @@ namespace pulse::net::udp {
         WSAStartupFailed,
         Unknown = 9999
     };
+    inline constexpr const char* error_to_string(ErrorCode code) noexcept;
 
-    constexpr const char* ErrorToString(ErrorCode code) {
+    // Error is POD and we therefore allow direct construction because we ensure that the constructor is constexpr.
+    struct Error {
+    public:
+        ErrorCode code;
+        std::string message;
+    
+        constexpr Error(ErrorCode c) noexcept : code(c) {}
+        Error(ErrorCode c, const std::exception& e) noexcept : code(c), message(concat(c, e.what())) {}
+        Error(ErrorCode c, std::string msg) noexcept : code(c), message(concat(c, std::move(msg))) {}
+    
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        std::string_view what() const noexcept {
+            if (!message.empty()) {
+                return message;
+            } else {
+                return error_to_string(code);
+            }
+        }
+    
+        [[nodiscard("If you're going to use this, you should probably do something with it.")]]
+        ErrorCode code_value() const noexcept { return code; }
+    
+        bool operator==(ErrorCode other) const noexcept { return code == other; }
+        bool operator!=(ErrorCode other) const noexcept { return code != other; }
+
+    private:
+        static std::string concat(ErrorCode code, const std::string& msg) noexcept {
+            try {
+                return std::string(error_to_string(code)) + ": " + msg;
+            } catch (...) {
+                return std::string(error_to_string(code)); // fallback if even std::string throws (rare but technically possible)
+            }
+        }
+    };
+
+    inline std::string to_string(const Error& error) noexcept {
+        return std::string(error.what()); // Always return a copy to be safe
+    }
+
+    template <class T>
+    inline std::string to_string(const std::expected<T, Error>& error) noexcept {
+        return to_string(error.error());
+    }
+
+    inline std::unexpected<Error> make_unexpected(ErrorCode code) noexcept {
+        return std::unexpected(Error(code));
+    }
+
+    inline constexpr const char* error_to_string(ErrorCode code) noexcept {
         switch (code) {
-            case ErrorCode::None: return "No error";
             case ErrorCode::InvalidAddress: return "Invalid address";
-            case ErrorCode::SocketCreationFailed: return "Socket creation failed";
             case ErrorCode::BindFailed: return "Bind failed";
             case ErrorCode::ConnectFailed: return "Connect failed";
             case ErrorCode::RecvFailed: return "Receive failed";

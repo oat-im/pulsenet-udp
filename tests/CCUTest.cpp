@@ -8,10 +8,19 @@
 using namespace pulse::net::udp;
 
 int handleServer() {
-    Addr serverAddr("127.0.0.1", 9000);
-    auto sockResult = Listen(serverAddr);
+    // We're an integration test so we'll use the get_socket_factory() to get the socket factory
+    // and create a socket. This is the same as the client code.
+    auto factory = get_socket_factory();
+
+    auto serverAddrResult = Addr::Create("127.0.0.1", 9000);
+    if (!serverAddrResult) {
+        std::cerr << "Failed to create server address: " << to_string(serverAddrResult) << std::endl;
+        return 1;
+    }
+    auto& serverAddr = *serverAddrResult;
+    auto sockResult = factory->listen(serverAddr);
     if (!sockResult) {
-        std::cerr << "Failed to bind server: " << static_cast<int>(sockResult.error()) << std::endl;
+        std::cerr << "Failed to bind server: " << to_string(sockResult) << std::endl;
         return 1;
     }
 
@@ -26,7 +35,7 @@ int handleServer() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
-            std::cerr << "recvFrom failed: " << static_cast<int>(packet.error()) << std::endl;
+            std::cerr << "recvFrom failed: " << to_string(packet) << std::endl;
             continue;
         }
 
@@ -36,7 +45,7 @@ int handleServer() {
 
         auto result = server->sendTo(addr, data, length);
         if (!result) {
-            std::cerr << "sendTo failed: " << static_cast<int>(result.error()) << std::endl;
+            std::cerr << "sendTo failed: " << to_string(result) << std::endl;
         }
     }
 
@@ -47,10 +56,19 @@ void sendDatagrams(const std::string& serverIp, uint16_t serverPort,
                    std::atomic<uint64_t>* datagramCount,
                    std::atomic<uint64_t>* datagramTimeoutCount,
                    std::atomic<bool>* stopFlag) {
-    Addr serverAddr(serverIp, serverPort);
-    auto sockResult = Dial(serverAddr);
+    // We're an integration test so we'll use the get_socket_factory() to get the socket factory
+    // and create a socket. This is the same as the client code.
+    auto factory = get_socket_factory();
+
+    auto serverAddrResult = Addr::Create(serverIp, serverPort);
+    if (!serverAddrResult) {
+        std::cerr << "Failed to create server address: " << to_string(serverAddrResult) << std::endl;
+        return;
+    }
+    auto& serverAddr = *serverAddrResult;
+    auto sockResult = factory->dial(serverAddr);
     if (!sockResult) {
-        std::cerr << "Failed to dial server: " << static_cast<int>(sockResult.error()) << std::endl;
+        std::cerr << "Failed to dial server: " << to_string(sockResult) << std::endl;
         return;
     }
 
@@ -70,7 +88,7 @@ void sendDatagrams(const std::string& serverIp, uint16_t serverPort,
                 waitingForResponse = false;
                 datagramCount->fetch_add(1);
             } else if (maybe.error() != ErrorCode::WouldBlock) {
-                std::cerr << "recvFrom failed: " << static_cast<int>(maybe.error()) << std::endl;
+                std::cerr << "recvFrom failed: " << to_string(maybe) << std::endl;
                 waitingForResponse = false;
             }
         } else if (waitingForResponse) {
@@ -82,7 +100,7 @@ void sendDatagrams(const std::string& serverIp, uint16_t serverPort,
 
             auto result = client->send(message.data(), message.size());
             if (!result) {
-                std::cerr << "send failed: " << static_cast<int>(result.error()) << std::endl;
+                std::cerr << "send failed: " << to_string(result) << std::endl;
             } else {
                 waitingForResponse = true;
             }

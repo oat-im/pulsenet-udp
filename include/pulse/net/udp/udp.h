@@ -2,6 +2,7 @@
 
 #include "udp_addr.h"
 #include "error_code.h"
+#include "socket_factory.h"
 #include <vector>
 #include <memory>
 #include <cstdint>
@@ -17,28 +18,28 @@ namespace pulse::net::udp {
         Addr addr;
     };
 
-class Socket {
-public:
-    virtual ~Socket() = default;
+    class ISocket {
+    public:
+        virtual ~ISocket() = default;
 
-    // Send a packet to the given address
-    virtual std::expected<void, ErrorCode> sendTo(const Addr& addr, const uint8_t* data, size_t length) = 0;
+        // Send a packet to the given address
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        virtual std::expected<void, Error> sendTo(const Addr& addr, const uint8_t* data, size_t length) = 0;
 
-    // Send a packet to the connected address
-    virtual std::expected<void, ErrorCode> send(const uint8_t* data, size_t length) = 0;
+        // Send a packet to the connected address
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        virtual std::expected<void, Error> send(const uint8_t* data, size_t length) = 0;
 
-    /// Receives a packet. The returned `data` pointer is valid only until the next recvFrom() call on the same thread.
-    virtual std::expected<ReceivedPacket, ErrorCode> recvFrom() = 0;
+        /// Receives a packet. The returned `data` pointer is valid only until the next recvFrom() call on the same thread.
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        virtual std::expected<ReceivedPacket, Error> recvFrom() = 0;
 
-    // Returns underlying socket fd/handle if needed
-    virtual std::expected<int, ErrorCode> getHandle() const = 0;
+        // Returns underlying socket fd/handle if needed
+        [[nodiscard("You're ignoring an error message. Don't do that.")]]
+        virtual std::expected<int, Error> getHandle() const = 0;
 
-    // Close the socket
-    virtual void close() = 0;
-};
-
-// Factory
-std::expected<std::unique_ptr<Socket>, ErrorCode> Listen(const Addr& bindAddr);
-std::expected<std::unique_ptr<Socket>, ErrorCode> Dial(const Addr& remoteAddr);
+        // Close the socket
+        virtual void close() = 0;
+    };
 
 }

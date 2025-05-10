@@ -4,20 +4,29 @@
 int main () {
     using namespace pulse::net::udp;
 
+    // We're an integration test so we'll use the get_socket_factory() to get the socket factory
+    // and create a socket. This is the same as the client code.
+    auto factory = get_socket_factory();
+
     std::cout << "Creating a server to receive packets..." << std::endl;
-    Addr serverAddr("127.0.0.1", 12345);
-    auto serverSocketResult = Listen(serverAddr);
+    auto serverAddrResult = Addr::Create("127.0.0.1", 12345);
+    if (!serverAddrResult) {
+        std::cerr << "Failed to create server address: " << to_string(serverAddrResult) << std::endl;
+        return 1;
+    }
+    auto& serverAddr = *serverAddrResult;
+    auto serverSocketResult = factory->listen(serverAddr);
     if (!serverSocketResult) {
-        std::cerr << "Failed to create server socket: " << static_cast<int>(serverSocketResult.error()) << std::endl;
+        std::cerr << "Failed to create server socket: " << to_string(serverSocketResult) << std::endl;
         return 1;
     }
     auto& serverSocket = *serverSocketResult;
     std::cout << "Server socket created successfully." << std::endl;
 
     std::cout << "Creating a client to send packets..." << std::endl;
-    auto clientSocketResult = Dial(serverAddr);
+    auto clientSocketResult = factory->dial(serverAddr);
     if (!clientSocketResult) {
-        std::cerr << "Failed to create client socket: " << static_cast<int>(clientSocketResult.error()) << std::endl;
+        std::cerr << "Failed to create client socket: " << to_string(clientSocketResult) << std::endl;
         return 1;
     }
     auto& clientSocket = *clientSocketResult;
@@ -28,14 +37,14 @@ int main () {
 
     auto sendResult = clientSocket->send(data.data(), data.size());
     if (!sendResult) {
-        std::cerr << "Failed to send data: " << static_cast<int>(sendResult.error()) << std::endl;
+        std::cerr << "Failed to send data: " << to_string(sendResult) << std::endl;
         return 1;
     }
     std::cout << "Data sent successfully." << std::endl;
 
     auto recvResult = serverSocket->recvFrom();
     if (!recvResult) {
-        std::cerr << "Failed to receive data: " << static_cast<int>(recvResult.error()) << std::endl;
+        std::cerr << "Failed to receive data: " << to_string(recvResult) << std::endl;
         return 1;
     }
 

@@ -17,19 +17,23 @@ include(GNUInstallDirs)
 if (WIN32)
     set(PULSENET_UDP_SRC
         src/udp_addr_win.cpp
-        src/udp_win.cpp
+        src/win_socket_factory_impl.cpp
+        src/win_socket_impl.cpp
     )
 else()
     set(PULSENET_UDP_SRC
         src/udp_addr_unix.cpp
-        src/udp_unix.cpp
+        src/unix_socket_factory_impl.cpp
+        src/unix_socket_impl.cpp
     )
 endif()
 
 add_library(pulsenet_udp STATIC
     ${PULSENET_UDP_SRC}
-    include/pulse/net/udp/udp.h
+    include/pulse/net/udp/error_code.h
+    include/pulse/net/udp/socket_factory.h
     include/pulse/net/udp/udp_addr.h
+    include/pulse/net/udp/udp.h
 )
 
 add_library(pulsenet::udp ALIAS pulsenet_udp)
